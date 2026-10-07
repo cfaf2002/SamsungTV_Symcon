@@ -2,7 +2,7 @@
 
 [![IP-Symcon ab 8.1](https://img.shields.io/badge/IP--Symcon-ab_8.1-0b6fb3.svg)](https://www.symcon.de)
 [![Optimiert für Symcon 9.0](https://img.shields.io/badge/optimiert_f%C3%BCr-Symcon_9.0-0b6fb3.svg)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v81-v90-q1-2026/)
-[![Modul-Version 1.0 (Build 5)](https://img.shields.io/badge/Modul--Version-1.0_(Build_5)-informational.svg)](library.json)
+[![Modul-Version 1.0 (Build 6)](https://img.shields.io/badge/Modul--Version-1.0_(Build_6)-informational.svg)](library.json)
 [![Tests](https://github.com/cfaf2002/SamsungTV_Symcon/actions/workflows/tests.yml/badge.svg)](https://github.com/cfaf2002/SamsungTV_Symcon/actions/workflows/tests.yml)
 [![PHP 8.3 und 8.5](https://img.shields.io/badge/PHP-8.3_%7C_8.5-777bb4.svg?logo=php&logoColor=white)](https://www.php.net)
 [![SDK: IPSModuleStrict](https://img.shields.io/badge/SDK-IPSModuleStrict-success.svg)](https://www.symcon.de/de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/module/)
@@ -81,6 +81,7 @@ Danach eine Instanz **Samsung TV** anlegen.
 2. Am Fernseher erscheint die Frage, ob **„Symcon“** zugreifen darf → **Zulassen**. Danach steht im Formular „Gekoppelt“.
 3. **MAC-Adresse** eintragen, wenn der Fernseher per **Netzwerkkabel** angeschlossen ist. Leer bleibt sie bei WLAN – dann nimmt das Modul die vom Fernseher gemeldete WLAN-MAC. Mit „Wake-on-LAN senden“ lässt sich das Einschalten prüfen.
 4. Unter **Funktionen** die Apps zusammenstellen: „Apps vom Fernseher laden“ trägt alle installierten Apps ein; nicht benötigte entfernen und übernehmen.
+5. **Modelle ab 2021** starten Apps über die lokale Schnittstelle oft nicht mehr und liefern auch keine App-Liste. Ist der Fernseher in SmartThings eingebunden (Modul [SmartThings](https://github.com/cfaf2002/Smartthings_Symcon)), unter **„Apps über SmartThings starten“** dessen Instanz „SmartThings Gerät“ wählen – dann startet das Modul Apps zuerst darüber. Ohne SmartThings versucht es den WebSocket und, wenn der Fernseher nicht antwortet, REST.
 
 | Einstellung | Bedeutung |
 | :-- | :-- |
@@ -168,6 +169,7 @@ php tests/stubs.php ../SymconStubs
 
 | Version | Build | Datum | Beschreibung |
 | :-- | --: | :-- | :-- |
+| 1.0 | 6 | 07.10.2026 | App-Start wahlweise über die SmartThings-Instanz des Fernsehers (nötig bei Modellen ab 2021); ohne Antwort des Fernsehers Start über REST; App-Liste höchstens stündlich angefragt |
 | 1.0 | 5 | 07.10.2026 | App-Start: Antwort des Fernsehers wird ausgewertet, bei Ablehnung Start über REST; App-IDs der Favoriten werden über den Namen an die App-Liste des Fernsehers angepasst |
 | 1.0 | 4 | 07.10.2026 | Kachel lässt oben Platz für Titel und Symbole der Symcon-App (keine Überlagerung mehr), eigener Name entfällt |
 | 1.0 | 3 | 07.10.2026 | Einschalten aus dem Netzwerk-Standby: kurz verbinden und Ein/Aus-Taste senden (zusätzlich zu Wake-on-LAN); Wake-on-LAN auch an den Broadcast des Fernseher-Netzes |

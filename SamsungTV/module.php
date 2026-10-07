@@ -25,6 +25,9 @@ class SamsungTV extends IPSModuleStrict
     use SamsungApiTrait;
     use SamsungTileTrait;
 
+    // Instanz „SmartThings Gerät“ aus der Bibliothek SmartThings (optional, für den App-Start)
+    private const STH_DEVICE_GUID = '{0E3FCD01-8B22-4987-88AE-26B272A7EA7D}';
+
     // Symcon-I/O „WebSocket Client“ und Datenfluss vom Typ „Simple“
     private const WSC_GUID = '{D68FD31F-0E90-7019-F16C-1949BD3079EF}';
     private const TX_GUID = '{79827379-F36E-4ADA-8A95-5F8D1DC92FA9}';
@@ -101,6 +104,7 @@ class SamsungTV extends IPSModuleStrict
         $this->RegisterPropertyBoolean('ShowSource', true);
         $this->RegisterPropertyBoolean('ShowRemote', true);
         $this->RegisterPropertyString('Apps', json_encode(self::DEFAULT_APPS));
+        $this->RegisterPropertyInteger('SmartThingsInstance', 0);
 
         // Kachel
         $this->RegisterPropertyBoolean('UseTile', true);
@@ -487,8 +491,16 @@ class SamsungTV extends IPSModuleStrict
             return false;
         }
         $appID = $this->InstalledAppID($appID, '');
+
+        // 1. Über SmartThings (zuverlässig bei neueren Modellen, die lokal keine Apps mehr starten)
+        if ($this->LaunchAppSmartThings($appID)) {
+            return true;
+        }
+
+        // 2. Über den WebSocket; der Fernseher antwortet mit ed.apps.launch (200 = gestartet)
         if ($this->HasActiveParent()) {
             $type = $this->AppType($appID);
+            $this->SetBuffer('PendingApp', $appID . '|' . time());
             $sent = $this->Send([
                 'method' => 'ms.channel.emit',
                 'params' => [
@@ -497,16 +509,41 @@ class SamsungTV extends IPSModuleStrict
                     'data'  => ['appId' => $appID, 'action_type' => $type, 'metaTag' => ''],
                 ],
             ]);
+            $this->SendDebug('App', 'launch ' . $appID . ' (' . $type . ')', 0);
             if ($sent) {
-                // Lehnt der Fernseher ab, startet ReceiveData die App über REST (siehe ed.apps.launch)
-                $this->SetBuffer('PendingApp', $appID . '|' . time());
-                $this->SendDebug('App', 'launch ' . $appID . ' (' . $type . ')', 0);
-                return true;
+                // kurz auf die Antwort warten (kommt über ReceiveData in einem anderen Thread)
+                for ($i = 0; $i < 15 && $this->GetBuffer('PendingApp') !== ''; $i++) {
+                    IPS_Sleep(100);
+                }
+                $answer = $this->GetBuffer('LaunchAnswer');
+                $this->SetBuffer('LaunchAnswer', '');
+                if ($this->GetBuffer('PendingApp') === '' && $answer === '200') {
+                    return true;
+                }
+                $this->SetBuffer('PendingApp', '');
+                $this->SendDebug('App', $answer === '' ? 'no answer from the TV' : 'rejected: ' . $answer, 0);
             }
         }
+
+        // 3. Über REST
         $host = $this->Host();
         $ok = $host !== '' && $this->ReadAttributeBoolean('TvOn') && $this->LaunchAppRest($host, $appID);
         $this->SendDebug('App', 'launch ' . $appID . ' via REST: ' . ($ok ? 'OK' : $this->apiError), 0);
+        return $ok;
+    }
+
+    /**
+     * Startet die App über die verknüpfte Instanz „SmartThings Gerät“ (Fähigkeit custom.launchapp).
+     */
+    private function LaunchAppSmartThings(string $appID): bool
+    {
+        $instance = $this->ReadPropertyInteger('SmartThingsInstance');
+        if ($instance <= 0 || !IPS_InstanceExists($instance) || IPS_GetInstance($instance)['ModuleInfo']['ModuleID'] !== self::STH_DEVICE_GUID
+            || !function_exists('STH_SendCommand')) {
+            return false;
+        }
+        $ok = (bool) @STH_SendCommand($instance, 'main', 'custom.launchapp', 'launchApp', (string) json_encode([$appID]));
+        $this->SendDebug('App', 'launch ' . $appID . ' via SmartThings: ' . ($ok ? 'OK' : 'failed'), 0);
         return $ok;
     }
 
@@ -686,7 +723,9 @@ class SamsungTV extends IPSModuleStrict
                     $this->SendRemote('Click', 'KEY_POWER');
                     $this->SendDebug('PowerOn', 'KEY_POWER sent after connect', 0);
                 }
-                if ($this->ReadAttributeString('InstalledApps') === '') {
+                // Manche Modelle (ab 2021) antworten nicht – deshalb höchstens einmal pro Stunde fragen
+                if ($this->ReadAttributeString('InstalledApps') === '' && time() - (int) $this->GetBuffer('AppListAsked') > 3600) {
+                    $this->SetBuffer('AppListAsked', (string) time());
                     $this->RequestInstalledApps();
                 }
                 break;
@@ -723,14 +762,11 @@ class SamsungTV extends IPSModuleStrict
 
             case 'ed.apps.launch':
                 // Antwort auf den App-Start: 200 = gestartet, sonst über REST nochmals versuchen
+                // LaunchApp wartet darauf und versucht sonst REST
                 $result = $message['data'] ?? null;
-                [$pending, $at] = array_pad(explode('|', $this->GetBuffer('PendingApp'), 2), 2, '0');
-                $this->SetBuffer('PendingApp', '');
                 $this->SendDebug('App', 'launch answer: ' . json_encode($result), 0);
-                if ((string) $result !== '200' && $pending !== '' && time() - (int) $at < 15) {
-                    $ok = $this->LaunchAppRest($this->Host(), $pending);
-                    $this->SendDebug('App', 'retry ' . $pending . ' via REST: ' . ($ok ? 'OK' : $this->apiError), 0);
-                }
+                $this->SetBuffer('LaunchAnswer', is_scalar($result) ? (string) $result : (string) json_encode($result));
+                $this->SetBuffer('PendingApp', '');
                 break;
 
             case 'ms.error':

@@ -166,6 +166,15 @@
                     "type": "Button",
                     "caption": "Load apps from the TV",
                     "onClick": "IPS_RequestAction($id, 'LoadApps', 0);"
+                },
+                {
+                    "type": "SelectInstance",
+                    "name": "SmartThingsInstance",
+                    "caption": "Start apps via SmartThings (instance “SmartThings Gerät” of this TV – needed for models from 2021)",
+                    "validModules": [
+                        "{0E3FCD01-8B22-4987-88AE-26B272A7EA7D}"
+                    ],
+                    "width": "600px"
                 }
             ]
         },

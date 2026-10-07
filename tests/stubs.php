@@ -71,12 +71,41 @@ class WebSocketClient extends IPSModule
     }
     public function ForwardData($JSONString)
     {
-        $GLOBALS['wscSent'][] = json_decode($JSONString, true);
+        $packet = json_decode($JSONString, true);
+        $GLOBALS['wscSent'][] = $packet;
+        // Fernseher beantwortet den App-Start (wenn der Test eine Antwort vorgibt)
+        $message = json_decode((string) hex2bin((string) $packet['Buffer']), true);
+        if (($message['params']['event'] ?? '') === 'ed.apps.launch' && ($GLOBALS['tvAppAnswer'] ?? null) !== null) {
+            $this->Push((string) json_encode(['event' => 'ed.apps.launch', 'data' => $GLOBALS['tvAppAnswer']]));
+        }
         return '';
     }
     public function Push(string $Text)
     {
         $this->SendDataToChildren(json_encode(['DataID' => '{018EF6B5-AB94-40C6-AA53-46943E824ACF}', 'Buffer' => bin2hex($Text)]));
+    }
+}
+PHP);
+
+// Nachbau der Instanz „SmartThings Gerät“ (Bibliothek SmartThings): merkt sich Befehle
+@mkdir($tmp . '/sth/SmartThingsGeraet', 0777, true);
+file_put_contents($tmp . '/sth/library.json', json_encode([
+    'id' => '{6E1B6E1B-0000-4000-8000-00000000AA02}', 'author' => 'Test', 'name' => 'STH Test', 'url' => '',
+    'version' => '1.0', 'build' => 1, 'date' => 0,
+]));
+file_put_contents($tmp . '/sth/SmartThingsGeraet/module.json', json_encode([
+    'id' => '{0E3FCD01-8B22-4987-88AE-26B272A7EA7D}', 'name' => 'SmartThingsGeraet', 'type' => 3, 'vendor' => 'Samsung SmartThings',
+    'aliases' => [], 'parentRequirements' => [], 'childRequirements' => [], 'implemented' => [], 'prefix' => 'STH',
+]));
+file_put_contents($tmp . '/sth/SmartThingsGeraet/module.php', <<<'PHP'
+<?php
+declare(strict_types=1);
+class SmartThingsGeraet extends IPSModule
+{
+    public function SendCommand(string $Component, string $Capability, string $Command, string $Arguments)
+    {
+        $GLOBALS['sthCommands'][] = [$Component, $Capability, $Command, json_decode($Arguments, true)];
+        return $GLOBALS['sthOk'] ?? true;
     }
 }
 PHP);
@@ -116,6 +145,7 @@ require $tmp . '/stubs/autoload.php';
 
 \IPS\Kernel::reset();
 \IPS\ModuleLoader::loadLibrary($tmp . '/wsc/library.json');
+\IPS\ModuleLoader::loadLibrary($tmp . '/sth/library.json');
 \IPS\ModuleLoader::loadLibrary(__DIR__ . '/../library.json');
 
 $failed = 0;
@@ -246,12 +276,27 @@ try {
     ok(lastSent()['params']['data']['appId'] === 'org.tizen.browser' && lastSent()['params']['data']['action_type'] === 'NATIVE_LAUNCH', 'App aus der Variable (Browser, NATIVE_LAUNCH)');
     // Antwort des Fernsehers auf den App-Start
     tv(['launched' => '']);
-    SAMTV_LaunchApp($id, '3201907018807');
-    push($parent, (string) json_encode(['event' => 'ed.apps.launch', 'data' => 200]));
-    ok((tvState()['launched'] ?? '') === '', 'App gestartet (200): kein zweiter Start');
-    SAMTV_LaunchApp($id, '3201907018807');
-    push($parent, (string) json_encode(['event' => 'ed.apps.launch', 'data' => 404]));
-    ok((tvState()['launched'] ?? '') === '3201907018807', 'App abgelehnt (404): Start über REST nachgeholt');
+    $GLOBALS['tvAppAnswer'] = 200;
+    ok(SAMTV_LaunchApp($id, '3201907018807') === true && (tvState()['launched'] ?? '') === '', 'App gestartet (Antwort 200): kein zweiter Weg');
+    $GLOBALS['tvAppAnswer'] = 404;
+    ok(SAMTV_LaunchApp($id, '3201907018807') === true && (tvState()['launched'] ?? '') === '3201907018807', 'App abgelehnt (404): Start über REST');
+    tv(['launched' => '']);
+    $GLOBALS['tvAppAnswer'] = null;
+    $started = microtime(true);
+    ok(SAMTV_LaunchApp($id, '3201907018807') === true && (tvState()['launched'] ?? '') === '3201907018807', 'Keine Antwort (neuere Modelle): Start über REST');
+    ok(microtime(true) - $started < 3, 'Wartet höchstens kurz auf die Antwort');
+    // App-Start über die SmartThings-Instanz
+    $sth = IPS_CreateInstance('{0E3FCD01-8B22-4987-88AE-26B272A7EA7D}');
+    IPS_SetProperty($id, 'SmartThingsInstance', $sth);
+    IPS_ApplyChanges($id);
+    $count = count($GLOBALS['wscSent']);
+    ok(SAMTV_LaunchApp($id, '3201907018807') === true && end($GLOBALS['sthCommands']) === ['main', 'custom.launchapp', 'launchApp', ['3201907018807']], 'App-Start über SmartThings (custom.launchapp)');
+    ok(count($GLOBALS['wscSent']) === $count, 'Mit SmartThings kein zusätzlicher lokaler Start');
+    $GLOBALS['sthOk'] = false;
+    ok(SAMTV_LaunchApp($id, '3201907018807') === true && count($GLOBALS['wscSent']) === $count + 1, 'SmartThings abgelehnt: lokaler Start als Rückfall');
+    $GLOBALS['sthOk'] = true;
+    IPS_SetProperty($id, 'SmartThingsInstance', 0);
+    IPS_ApplyChanges($id);
     // Favorit mit einer ID, die es auf diesem Fernseher nicht gibt
     IPS_SetProperty($id, 'Apps', json_encode([['Name' => 'Netflix', 'AppID' => '11101200001']]));
     IPS_ApplyChanges($id);
