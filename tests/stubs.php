@@ -450,6 +450,15 @@ try {
     ok(GetValue(IPS_GetObjectIDByIdent('Power', $id)) === false && attr($id, 'PowerTarget') === '', 'Standby erkannt, Schaltziel erreicht');
     ok(IPS_GetProperty($parent, 'Active') === false, 'WebSocket-Client im Standby aus');
     ok(IPS_GetInstance($id)['ConnectionID'] === 0 && attr($id, 'Socket') === $parent, 'Im Standby getrennt, WebSocket Client gemerkt');
+    $notice = static function (int $id): bool {
+        foreach (json_decode(IPS_GetConfigurationForm($id), true)['elements'] as $e) {
+            if (($e['name'] ?? '') === 'StandbyNotice') {
+                return (bool) ($e['visible'] ?? false);
+            }
+        }
+        return false;
+    };
+    ok($notice($id), 'Formular: Hinweis „kein Fehler“ im Standby sichtbar');
     ok(SAMTV_SendKey($id, 'KEY_HOME') === false, 'Im Standby keine Tasten');
     IPS_SetProperty($id, 'MAC', 'AA-BB-CC-DD-EE-FF');
     IPS_SetProperty($id, 'Broadcast', '127.255.255.255');
@@ -467,6 +476,7 @@ try {
     tv(['power' => 'on']);
     SAMTV_Update($id);
     ok(GetValue(IPS_GetObjectIDByIdent('Power', $id)) === true, 'Wieder an');
+    ok(!$notice($id), 'Formular: Hinweis bei eingeschaltetem Fernseher ausgeblendet');
     ok(str_ends_with((string) IPS_GetProperty($parent, 'URL'), '&token=12345678'), 'Neue Verbindung mit Token');
 
     // Magic Packet

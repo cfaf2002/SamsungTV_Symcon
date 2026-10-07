@@ -2,7 +2,7 @@
 
 [![IP-Symcon ab 8.1](https://img.shields.io/badge/IP--Symcon-ab_8.1-0b6fb3.svg)](https://www.symcon.de)
 [![Optimiert für Symcon 9.0](https://img.shields.io/badge/optimiert_f%C3%BCr-Symcon_9.0-0b6fb3.svg)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v81-v90-q1-2026/)
-[![Modul-Version 1.2 (Build 20)](https://img.shields.io/badge/Modul--Version-1.2_(Build_20)-informational.svg)](library.json)
+[![Modul-Version 1.2 (Build 21)](https://img.shields.io/badge/Modul--Version-1.2_(Build_21)-informational.svg)](library.json)
 [![Tests](https://github.com/cfaf2002/SamsungTV_Symcon/actions/workflows/tests.yml/badge.svg)](https://github.com/cfaf2002/SamsungTV_Symcon/actions/workflows/tests.yml)
 [![PHP 8.3 und 8.5](https://img.shields.io/badge/PHP-8.3_%7C_8.5-777bb4.svg?logo=php&logoColor=white)](https://www.php.net)
 [![SDK: IPSModuleStrict](https://img.shields.io/badge/SDK-IPSModuleStrict-success.svg)](https://www.symcon.de/de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/module/)
@@ -63,7 +63,7 @@ Autor: Armin Frohwerk · Lizenz: MIT
 | UPnP RenderingControl | 9197 (http) | Lautstärke und Stumm |
 | Wake-on-LAN | UDP 9 | Einschalten |
 
-Die WebSocket-Verbindung hält ein Symcon-**WebSocket Client** als übergeordnete Instanz. Das Modul legt ihn selbst an (Name „… (WebSocket)“ unter den I/O-Instanzen), trägt die Adresse ein und verbindet ihn nur, solange der Fernseher an ist. Ist der Fernseher aus, wird der WebSocket Client abgeschaltet und von der Instanz getrennt – so gibt es weder Fehlermeldungen im Log noch ein Warnsymbol im Objektbaum. In der Instanzkonfiguration zeigt Symcon währenddessen oben den Hinweis „Die Instanz benötigt eine übergeordnete Instanz“ – das ist gewollt und verschwindet beim Einschalten; „Gateway ändern“ ist dafür nicht nötig. Wird die Instanz gelöscht, kann der WebSocket Client von Hand mit gelöscht werden.
+Die WebSocket-Verbindung hält ein Symcon-**WebSocket Client** als übergeordnete Instanz. Das Modul legt ihn selbst an (Name „… (WebSocket)“ unter den I/O-Instanzen), trägt die Adresse ein und verbindet ihn nur, solange der Fernseher an ist. Ist der Fernseher aus, wird der WebSocket Client abgeschaltet und von der Instanz getrennt – so gibt es weder Fehlermeldungen im Log noch ein Warnsymbol im Objektbaum. In der Instanzkonfiguration zeigt Symcon währenddessen oben den Hinweis „Die Instanz benötigt eine übergeordnete Instanz“ – das ist gewollt, **kein Fehler**, und verschwindet beim Einschalten; „Gateway ändern“ ist dafür nicht nötig. Das Modul blendet dazu ganz oben im Formular einen eigenen Hinweis „Achtung – kein Fehler“ ein. Wird die Instanz gelöscht, kann der WebSocket Client von Hand mit gelöscht werden.
 
 Die SmartThings-Cloud wird bewusst nicht genutzt: Sie liefert zwar die aktive Quelle, verlangt aber Zugangsdaten, die Samsung inzwischen nur noch 24 Stunden gültig ausstellt.
 
@@ -186,6 +186,7 @@ php tests/stubs.php ../SymconStubs
 
 | Version | Build | Datum | Beschreibung |
 | :-- | --: | :-- | :-- |
+| 1.2 | 21 | 07.10.2026 | Hinweis „Achtung – kein Fehler“ ganz oben im Formular, solange der Fernseher aus ist (aktualisiert sich auch bei offenem Formular) |
 | 1.2 | 20 | 07.10.2026 | Formular erklärt im Standby den Symcon-Hinweis zur fehlenden übergeordneten Instanz |
 | 1.2 | 19 | 07.10.2026 | Kein Warnsymbol im Objektbaum, solange der Fernseher aus ist: der WebSocket Client wird im Standby getrennt statt nur inaktiv geschaltet (das Modul legt ihn selbst an und merkt ihn sich) |
 | 1.2 | 18 | 07.10.2026 | Hausstil-Prüfung: Timer ohne öffentliche Funktion (`SAMTV_Poll` entfällt), Stummtaste 36 px, Tastenfeld erst ab ausreichender Höhe, keine feste Schattenfarbe, README ergänzt |

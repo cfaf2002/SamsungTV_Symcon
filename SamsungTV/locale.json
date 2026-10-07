@@ -55,7 +55,6 @@
             "Own tile for the tile visualization (remote control)": "Eigene Kachel für die Kachel-Visualisierung (Fernbedienung)",
             "Pair again": "Neu koppeln",
             "Paired – Symcon is allowed on the TV.": "Gekoppelt – Symcon ist am Fernseher erlaubt.",
-            "The TV is off, so the connection to the WebSocket client is disconnected on purpose. The notice about the missing parent instance disappears when the TV is switched on.": "Der Fernseher ist aus, deshalb ist die Verbindung zum WebSocket Client absichtlich getrennt. Der Hinweis oben zur fehlenden übergeordneten Instanz verschwindet beim Einschalten von selbst.",
             "Pairing reset. Please allow access on the TV when it asks.": "Kopplung zurückgesetzt. Bitte den Zugriff am Fernseher erlauben, sobald er fragt.",
             "Pause": "Pause",
             "Play": "Wiedergabe",
@@ -107,7 +106,8 @@
             "Waiting for confirmation – please allow “Symcon” on the TV.": "Warte auf Bestätigung – bitte „Symcon“ am Fernseher erlauben.",
             "Wake-on-LAN could not be sent. Please check the MAC address.": "Wake-on-LAN konnte nicht gesendet werden. Bitte die MAC-Adresse prüfen.",
             "Wake-on-LAN packet sent.": "Wake-on-LAN-Paket gesendet.",
-            "yes": "ja"
+            "yes": "ja",
+            "ℹ️ NOTE – NOT AN ERROR: The TV is off, so the connection to the WebSocket client is disconnected on purpose. The orange notice above (\"requires a parent instance\") is expected and disappears by itself when the TV is switched on. Please do not change the gateway.": "ℹ️ ACHTUNG – KEIN FEHLER: Der Fernseher ist aus, deshalb ist die Verbindung zum WebSocket Client absichtlich getrennt. Der orange Hinweis oben („benötigt eine übergeordnete Instanz“) ist gewollt und verschwindet beim Einschalten von selbst. Bitte nicht auf „Gateway ändern“ klicken."
         }
     }
 }

@@ -1,6 +1,12 @@
 {
     "elements": [
         {
+            "type": "Label",
+            "name": "StandbyNotice",
+            "caption": "ℹ️ NOTE – NOT AN ERROR: The TV is off, so the connection to the WebSocket client is disconnected on purpose. The orange notice above (\"requires a parent instance\") is expected and disappears by itself when the TV is switched on. Please do not change the gateway.",
+            "visible": false
+        },
+        {
             "type": "ExpansionPanel",
             "caption": "Connection",
             "expanded": true,

@@ -298,9 +298,7 @@ class SamsungTV extends IPSModuleStrict
             default            => 'Not paired yet. When the TV is on, it asks once whether Symcon may control it.',
         });
         // Im Standby ist der WebSocket Client absichtlich getrennt – Symcon zeigt dann oben einen Hinweis
-        if ($this->Host() !== '' && $this->ParentID() === 0) {
-            $caption .= ' ' . $this->Translate('The TV is off, so the connection to the WebSocket client is disconnected on purpose. The notice about the missing parent instance disappears when the TV is switched on.');
-        }
+        $this->InjectProperty($form['elements'], 'StandbyNotice', 'visible', $this->StandbyNoticeVisible());
         $this->InjectProperty($form['elements'], 'PairingLabel', 'caption', $caption);
         return (string) json_encode($form);
     }
@@ -1099,6 +1097,16 @@ class SamsungTV extends IPSModuleStrict
             IPS_DisconnectInstance($this->InstanceID);
             $this->WatchParent();
         }
+        // Offenes Formular nachziehen
+        $this->UpdateFormField('StandbyNotice', 'visible', $this->StandbyNoticeVisible());
+    }
+
+    /**
+     * Hinweis im Formular: Getrennt ist gewollt, kein Fehler.
+     */
+    private function StandbyNoticeVisible(): bool
+    {
+        return $this->Host() !== '' && $this->ParentID() === 0;
     }
 
     /**
