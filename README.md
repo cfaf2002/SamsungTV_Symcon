@@ -2,7 +2,7 @@
 
 [![IP-Symcon ab 8.1](https://img.shields.io/badge/IP--Symcon-ab_8.1-0b6fb3.svg)](https://www.symcon.de)
 [![Optimiert für Symcon 9.0](https://img.shields.io/badge/optimiert_f%C3%BCr-Symcon_9.0-0b6fb3.svg)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v81-v90-q1-2026/)
-[![Modul-Version 1.0 (Build 3)](https://img.shields.io/badge/Modul--Version-1.0_(Build_3)-informational.svg)](library.json)
+[![Modul-Version 1.0 (Build 4)](https://img.shields.io/badge/Modul--Version-1.0_(Build_4)-informational.svg)](library.json)
 [![Tests](https://github.com/cfaf2002/SamsungTV_Symcon/actions/workflows/tests.yml/badge.svg)](https://github.com/cfaf2002/SamsungTV_Symcon/actions/workflows/tests.yml)
 [![PHP 8.3 und 8.5](https://img.shields.io/badge/PHP-8.3_%7C_8.5-777bb4.svg?logo=php&logoColor=white)](https://www.php.net)
 [![SDK: IPSModuleStrict](https://img.shields.io/badge/SDK-IPSModuleStrict-success.svg)](https://www.symcon.de/de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/module/)
@@ -95,7 +95,7 @@ Wurde der Zugriff am Fernseher abgelehnt (Status 202), unter **Einstellungen →
 
 ## 5. Kachel
 
-Die Kachel ist eine Fernbedienung: Kopfzeile mit Name, Zustand und Ein/Aus-Taste, Steuerkreuz mit OK, Zurück, Home und Menü, Wippen für Lautstärke und Programm, Stummtaste, Lautstärkeregler (mit UPnP), Medientasten sowie Leisten für Quellen und Apps. Pfeile und Lautstärke wiederholen sich, solange sie gedrückt bleiben.
+Die Kachel ist eine Fernbedienung: oben bleibt Platz für Titel und Symbole der Symcon-App, darunter Zustand und Ein/Aus-Taste, Steuerkreuz mit OK, Zurück, Home und Menü, Wippen für Lautstärke und Programm, Stummtaste, Lautstärkeregler (mit UPnP), Medientasten sowie Leisten für Quellen und Apps. Pfeile und Lautstärke wiederholen sich, solange sie gedrückt bleiben.
 
 - **Farbschema der Kachel:** Symcon-Design (Farben der Visualisierung), Dunkel oder Hell
 - Quellen, Apps sowie Medien- und Programmtasten lassen sich einzeln ausblenden
@@ -168,6 +168,7 @@ php tests/stubs.php ../SymconStubs
 
 | Version | Build | Datum | Beschreibung |
 | :-- | --: | :-- | :-- |
+| 1.0 | 4 | 07.10.2026 | Kachel lässt oben Platz für Titel und Symbole der Symcon-App (keine Überlagerung mehr), eigener Name entfällt |
 | 1.0 | 3 | 07.10.2026 | Einschalten aus dem Netzwerk-Standby: kurz verbinden und Ein/Aus-Taste senden (zusätzlich zu Wake-on-LAN); Wake-on-LAN auch an den Broadcast des Fernseher-Netzes |
 | 1.0 | 2 | 07.10.2026 | Gerätename ohne HTML-Kodierung (z. B. 75&quot; → 75″) |
 | 1.0 | 1 | 06.10.2026 | Erste Version: WebSocket-Steuerung mit Kopplung, Wake-on-LAN, Lautstärke über UPnP, Quellen, Apps, Kachel als Fernbedienung |

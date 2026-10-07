@@ -3,7 +3,7 @@
     Copyright (c) 2026 Armin Frohwerk · MIT-Lizenz (siehe LICENSE)
     SPDX-License-Identifier: MIT
 
-    Aufbau: Kopfzeile mit Name, Zustand und Ein/Aus · Steuerkreuz mit OK, Zurück und Home ·
+    Aufbau: oben frei für Titel und Symbole von Symcon · Zeile mit Zustand und Ein/Aus · Steuerkreuz mit OK, Zurück und Home ·
     Lautstärke und Programm · Medientasten · Quellen und Apps als Leisten.
     Kleine Kacheln zeigen nur Kopfzeile und Lautstärke.
     Sicherheit: Alle Werte werden per textContent gesetzt, nie als HTML.
@@ -59,7 +59,8 @@
         box-sizing: border-box;
         width: 100%;
         height: 100%;
-        padding: 12px;
+        /* oben Platz für Titel und Symbole der Kachel-Visualisierung (Name kommt von Symcon) */
+        padding: clamp(40px, 11cqmin, 54px) 12px 12px;
         display: flex;
         flex-direction: column;
         gap: 10px;
@@ -79,7 +80,7 @@
         box-shadow: 0 0 0 3px color-mix(in srgb, var(--tv-state) 22%, transparent); }
     .title { flex: 1; min-width: 0; }
     .name { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .state { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .state { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     button {
         font: inherit;
@@ -167,12 +168,12 @@
 
     /* Kleine Kachel: nur Kopfzeile und Lautstärke */
     .mini { display: none; gap: 8px; }
-    @container (max-height: 230px) {
+    @container (max-height: 270px) {
         .main, .media, .strip { display: none !important; }
         .mini { display: flex; }
         .mini button { flex: 1; }
     }
-    @container (max-height: 120px) {
+    @container (max-height: 160px) {
         .body { display: none; }
     }
     @container (max-width: 300px) {
@@ -204,7 +205,6 @@
     <div class="head">
         <span class="dot" aria-hidden="true"></span>
         <div class="title">
-            <div class="name" id="name">Samsung TV</div>
             <div class="state" id="state"></div>
         </div>
         <button type="button" class="power" id="power" data-tip="Switch on / off"><svg class="i"><use href="#i-power"/></svg></button>
@@ -403,7 +403,6 @@
             if (tile.classList.contains('paused')) cls.push('paused');
             tile.className = cls.join(' ');
 
-            $('name').textContent = d.name || 'Samsung TV';
             $('state').textContent = stateText(d);
             $('notice').textContent = d.error || '';
             $('power').setAttribute('aria-pressed', d.on ? 'true' : 'false');
