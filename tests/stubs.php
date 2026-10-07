@@ -244,6 +244,19 @@ try {
     ok(SAMTV_LaunchApp($id, '3201907018807') === true && lastSent()['params']['data']['action_type'] === 'DEEP_LINK', 'App starten (DEEP_LINK)');
     IPS_RequestAction($id, 'App', 5);
     ok(lastSent()['params']['data']['appId'] === 'org.tizen.browser' && lastSent()['params']['data']['action_type'] === 'NATIVE_LAUNCH', 'App aus der Variable (Browser, NATIVE_LAUNCH)');
+    // Antwort des Fernsehers auf den App-Start
+    tv(['launched' => '']);
+    SAMTV_LaunchApp($id, '3201907018807');
+    push($parent, (string) json_encode(['event' => 'ed.apps.launch', 'data' => 200]));
+    ok((tvState()['launched'] ?? '') === '', 'App gestartet (200): kein zweiter Start');
+    SAMTV_LaunchApp($id, '3201907018807');
+    push($parent, (string) json_encode(['event' => 'ed.apps.launch', 'data' => 404]));
+    ok((tvState()['launched'] ?? '') === '3201907018807', 'App abgelehnt (404): Start über REST nachgeholt');
+    // Favorit mit einer ID, die es auf diesem Fernseher nicht gibt
+    IPS_SetProperty($id, 'Apps', json_encode([['Name' => 'Netflix', 'AppID' => '11101200001']]));
+    IPS_ApplyChanges($id);
+    IPS_RequestAction($id, 'App', 1);
+    ok(lastSent()['params']['data']['appId'] === '3201907018807', 'Fremde App-ID über den Namen auf die ID des Fernsehers umgestellt');
     ok(SAMTV_OpenBrowser($id, 'https://www.symcon.de') === true && lastSent()['params']['data']['metaTag'] === 'https://www.symcon.de', 'Browser mit Adresse');
     ok(SAMTV_OpenBrowser($id, 'javascript:alert(1)') === false, 'Ungültige Adresse abgelehnt');
     ok(SAMTV_SendText($id, 'Tagesschau') === true && base64_decode(lastSent()['params']['Cmd']) === 'Tagesschau', 'Text senden');

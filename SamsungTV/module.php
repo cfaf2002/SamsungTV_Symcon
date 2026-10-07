@@ -486,9 +486,10 @@ class SamsungTV extends IPSModuleStrict
         if ($appID === '' || !preg_match('/^[A-Za-z0-9._-]{3,64}$/', $appID)) {
             return false;
         }
+        $appID = $this->InstalledAppID($appID, '');
         if ($this->HasActiveParent()) {
             $type = $this->AppType($appID);
-            return $this->Send([
+            $sent = $this->Send([
                 'method' => 'ms.channel.emit',
                 'params' => [
                     'event' => 'ed.apps.launch',
@@ -496,9 +497,47 @@ class SamsungTV extends IPSModuleStrict
                     'data'  => ['appId' => $appID, 'action_type' => $type, 'metaTag' => ''],
                 ],
             ]);
+            if ($sent) {
+                // Lehnt der Fernseher ab, startet ReceiveData die App über REST (siehe ed.apps.launch)
+                $this->SetBuffer('PendingApp', $appID . '|' . time());
+                $this->SendDebug('App', 'launch ' . $appID . ' (' . $type . ')', 0);
+                return true;
+            }
         }
         $host = $this->Host();
-        return $host !== '' && $this->ReadAttributeBoolean('TvOn') && $this->LaunchAppRest($host, $appID);
+        $ok = $host !== '' && $this->ReadAttributeBoolean('TvOn') && $this->LaunchAppRest($host, $appID);
+        $this->SendDebug('App', 'launch ' . $appID . ' via REST: ' . ($ok ? 'OK' : $this->apiError), 0);
+        return $ok;
+    }
+
+    /**
+     * Passt eine App-ID an die App-Liste des Fernsehers an: Ist die ID dort nicht vorhanden, wird die App
+     * mit gleichem Namen genommen (App-IDs unterscheiden sich je nach Baujahr und Land).
+     */
+    private function InstalledAppID(string $appID, string $name): string
+    {
+        $installed = json_decode($this->GetInstalledApps(), true) ?: [];
+        if ($installed === [] || in_array($appID, array_column($installed, 'appId'), true)) {
+            return $appID;
+        }
+        if ($name === '') {
+            foreach ($this->Apps() as $app) {
+                if ($app['AppID'] === $appID) {
+                    $name = $app['Name'];
+                }
+            }
+        }
+        $wanted = mb_strtolower(trim($name));
+        if ($wanted === '') {
+            return $appID;
+        }
+        foreach ($installed as $app) {
+            if (mb_strtolower(trim((string) $app['name'])) === $wanted) {
+                $this->SendDebug('App', $name . ': ' . $appID . ' → ' . $app['appId'] . ' (ID of this TV)', 0);
+                return (string) $app['appId'];
+            }
+        }
+        return $appID;
     }
 
     /**
@@ -680,6 +719,18 @@ class SamsungTV extends IPSModuleStrict
                 usort($apps, static fn (array $a, array $b): int => strcasecmp($a['name'], $b['name']));
                 $this->WriteAttributeString('InstalledApps', (string) json_encode($apps));
                 $this->SendDebug('Apps', count($apps) . ' apps', 0);
+                break;
+
+            case 'ed.apps.launch':
+                // Antwort auf den App-Start: 200 = gestartet, sonst über REST nochmals versuchen
+                $result = $message['data'] ?? null;
+                [$pending, $at] = array_pad(explode('|', $this->GetBuffer('PendingApp'), 2), 2, '0');
+                $this->SetBuffer('PendingApp', '');
+                $this->SendDebug('App', 'launch answer: ' . json_encode($result), 0);
+                if ((string) $result !== '200' && $pending !== '' && time() - (int) $at < 15) {
+                    $ok = $this->LaunchAppRest($this->Host(), $pending);
+                    $this->SendDebug('App', 'retry ' . $pending . ' via REST: ' . ($ok ? 'OK' : $this->apiError), 0);
+                }
                 break;
 
             case 'ms.error':
