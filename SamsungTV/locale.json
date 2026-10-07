@@ -62,6 +62,7 @@
             "Please allow “Symcon” on the TV": "Bitte „Symcon“ am Fernseher erlauben",
             "Please enter the IP address of the TV": "Bitte die IP-Adresse des Fernsehers eintragen",
             "Power": "Ein/Aus",
+            "POWER": "EIN/AUS",
             "Press the power button": "Ein/Aus-Taste drücken",
             "Query now": "Jetzt abfragen",
             "Read and set the volume via UPnP (slider and mute)": "Lautstärke über UPnP lesen und setzen (Schieberegler und Stumm)",

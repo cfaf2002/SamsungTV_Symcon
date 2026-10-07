@@ -2,7 +2,7 @@
 
 [![IP-Symcon ab 8.1](https://img.shields.io/badge/IP--Symcon-ab_8.1-0b6fb3.svg)](https://www.symcon.de)
 [![Optimiert für Symcon 9.0](https://img.shields.io/badge/optimiert_f%C3%BCr-Symcon_9.0-0b6fb3.svg)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v81-v90-q1-2026/)
-[![Modul-Version 1.2 (Build 11)](https://img.shields.io/badge/Modul--Version-1.2_(Build_11)-informational.svg)](library.json)
+[![Modul-Version 1.2 (Build 12)](https://img.shields.io/badge/Modul--Version-1.2_(Build_12)-informational.svg)](library.json)
 [![Tests](https://github.com/cfaf2002/SamsungTV_Symcon/actions/workflows/tests.yml/badge.svg)](https://github.com/cfaf2002/SamsungTV_Symcon/actions/workflows/tests.yml)
 [![PHP 8.3 und 8.5](https://img.shields.io/badge/PHP-8.3_%7C_8.5-777bb4.svg?logo=php&logoColor=white)](https://www.php.net)
 [![SDK: IPSModuleStrict](https://img.shields.io/badge/SDK-IPSModuleStrict-success.svg)](https://www.symcon.de/de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/module/)
@@ -100,12 +100,12 @@ Wurde der Zugriff am Fernseher abgelehnt (Status 202), unter **Einstellungen →
 
 Gestaltet wie die Front eines AV-Receivers. Oben bleibt Platz für Titel und Symbole der Symcon-App. Darunter:
 
-- **Statusleiste:** LEDs für Ein, Verbindung und App sowie die Ein/Aus-Taste.
+- **Kopf:** Display mit LEDs für Ein, Verbindung und App, rechts daneben die hohe Ein/Aus-Taste wie an einem Receiver.
 - **Display:** Icon und Name der laufenden App bzw. Quelle in Displayschrift, darunter die Lautstärke als Pegelanzeige mit 20 Segmenten. Ein Tipp auf ein Segment setzt die Lautstärke (mit UPnP), daneben − und +.
 - **App-Tasten:** die Favoriten mit eigenem Icon oder Kürzel (z. B. „PV“ für Prime Video); die laufende App leuchtet.
 - **Tastenfeld:** links Zurück, Home und Menü, in der Mitte das runde Steuerkreuz mit OK, rechts die Programmwippe. Stumm sitzt im Display neben − und +. Pfeile und Lautstärke wiederholen sich, solange sie gedrückt bleiben.
 - **Medien- und Quellenleiste** als durchgehende Segmentleisten.
-- **Größen:** je nach Höhe nur Statusleiste und Display, dazu die App-Tasten, dazu das Tastenfeld, ab ca. 580 px alles.
+- **Größen:** je nach Höhe nur der Kopf, dazu die App-Tasten, dazu das Tastenfeld (das Steuerkreuz passt sich dem Platz an), ab ca. 560 px alles. Auch schmale Handy-Kacheln (ab ca. 320 px Breite) zeigen alles vollständig.
 - **Farbschema der Kachel:** Symcon-Design (Farben der Visualisierung), Dunkel oder Hell. Quellen, Apps sowie Medien- und Programmtasten lassen sich einzeln ausblenden.
 
 ### App-Icons hinterlegen
@@ -183,6 +183,7 @@ php tests/stubs.php ../SymconStubs
 
 | Version | Build | Datum | Beschreibung |
 | :-- | --: | :-- | :-- |
+| 1.2 | 12 | 07.10.2026 | Kopf kompakter (LEDs im Display, hohe Ein/Aus-Taste daneben); Steuerkreuz richtet sich nach dem freien Platz – nichts mehr abgeschnitten auf schmalen Handy-Kacheln |
 | 1.2 | 11 | 07.10.2026 | Rundes Steuerkreuz mit Programmwippe zurück; Stumm im Display |
 | 1.2 | 10 | 07.10.2026 | Kachel im technischen Stil (Receiver-Front: LEDs, Display mit Pegelanzeige, eckiges Tastenkreuz, Segmentleisten); Icons: Bildart am Inhalt erkannt, große Bilder auf 128 × 128 px verkleinert, Zustand je App im Formular |
 | 1.1 | 9 | 07.10.2026 | Kachel: mehr Abstand zum Symcon-Titel, feinere Größenstufen (Steuerkreuz schon bei mittlerer Höhe) |

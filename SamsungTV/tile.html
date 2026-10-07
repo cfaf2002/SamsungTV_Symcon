@@ -3,8 +3,8 @@
     Copyright (c) 2026 Armin Frohwerk · MIT-Lizenz (siehe LICENSE)
     SPDX-License-Identifier: MIT
 
-    Aufbau: oben frei für Titel und Symbole von Symcon · Statusleiste mit LEDs (Ein, Verbindung, App) und Ein/Aus ·
-    Display (laufende App bzw. Quelle, Pegelanzeige der Lautstärke) · App-Tasten mit Icon oder Kürzel ·
+    Aufbau: oben frei für Titel und Symbole von Symcon · Display mit LEDs (Ein, Verbindung, App), laufender App bzw. Quelle
+    und Pegelanzeige der Lautstärke, daneben die hohe Ein/Aus-Taste · App-Tasten mit Icon oder Kürzel ·
     Tastenfeld (Navigation, rundes Steuerkreuz mit OK, Programmwippe), Stumm im Display · Medien- und Quellenleiste.
     Je nach Höhe: Display · + App-Tasten · + Tastenfeld · alles.
     Sicherheit: Alle Werte werden per textContent gesetzt, nie als HTML.
@@ -99,15 +99,21 @@
     button:disabled { opacity: .35; cursor: default; }
     svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 
-    /* Statusleiste mit LEDs */
-    .bar { display: flex; align-items: center; gap: 14px; flex: none; }
-    .led { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; }
+    /* Kopf: Display und daneben die hohe Ein/Aus-Taste (wie an einem Receiver) */
+    .head { display: flex; gap: 8px; align-items: stretch; flex: none; }
+    .head .display { flex: 1; min-width: 0; }
+    .power { width: 48px; height: auto; flex: none; flex-direction: column; gap: 4px; }
+    .power svg.i { width: 22px; height: 22px; }
+    .power .pl { font-family: var(--mono); font-size: 9px; color: var(--muted); }
+
+    /* LEDs oben im Display */
+    .leds { display: flex; gap: 12px; flex-wrap: wrap; }
+    .led { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-family: var(--mono); font-size: 10px; }
     .led i { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); transition: background-color .2s, box-shadow .2s; }
     .led.on i { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
     .led.sig i { background: var(--lit); box-shadow: 0 0 6px var(--lit); }
     .led.wait i { background: var(--warn); animation: blink 1s steps(2, start) infinite; }
     @keyframes blink { 50% { opacity: .2; } }
-    .bar .power { margin-left: auto; width: 44px; height: 36px; }
     #tile.on .power { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 55%, transparent); }
 
     /* Display */
@@ -115,7 +121,7 @@
         flex: none;
         border: 1px solid var(--edge-strong);
         border-radius: var(--r-box);
-        padding: 10px 12px 8px;
+        padding: 8px 10px 8px;
         background:
             repeating-linear-gradient(0deg, var(--grid) 0 1px, transparent 1px 4px),
             var(--glass);
@@ -172,14 +178,18 @@
         background: color-mix(in srgb, var(--m1) 28%, transparent); border: 1px solid color-mix(in srgb, var(--m1) 55%, transparent); border-radius: 6px; box-sizing: border-box; }
 
     /* Tastenfeld: Navigation | rundes Steuerkreuz | Programmwippe */
-    .keys { flex: 1; min-height: 0; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; }
+    .keys { flex: 1; min-height: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: minmax(0, 1fr); align-items: center; gap: 12px; }
     .nav { display: flex; flex-direction: column; gap: 10px; }
     .nav button { width: 44px; height: 44px; border-radius: 14px; border: 0; }
     .dpad {
         justify-self: center;
+        align-self: center;
         position: relative;
-        width: min(210px, 52cqw, max(120px, calc(100cqh - 250px)));
+        /* so groß, wie Höhe und Breite des Tastenfelds erlauben (höchstens 210 px) */
+        height: min(100%, 210px);
+        max-width: 100%;
         aspect-ratio: 1;
+        box-sizing: border-box;
         border-radius: 50%;
         background:
             radial-gradient(circle at 50% 50%, transparent 31%, var(--glass) 32%),
@@ -219,14 +229,16 @@
     #tile.paused * { animation-play-state: paused !important; }
 
     /* Größen (Höhe ohne Titelbereich): Display · + App-Tasten · + Tastenfeld · alles */
-    @container (max-height: 200px) { .body { display: none; } }
-    @container (max-height: 340px) { .keys { display: none !important; } }
-    @container (max-height: 520px) { .media, .sources { display: none !important; } }
-    @container (max-width: 330px) {
-        .keys { grid-template-columns: 1fr auto; }
-        .nav { grid-column: 1 / -1; flex-direction: row; justify-content: center; order: 3; }
-        .dpad { width: min(170px, 60cqw); }
-        .led span { display: none; }
+    @container (max-height: 180px) { .body { display: none; } }
+    @container (max-height: 300px) { .keys { display: none !important; } }
+    @container (max-height: 500px) { .media, .sources { display: none !important; } }
+    @container (max-width: 340px) {
+        .keys { gap: 8px; }
+        .nav { gap: 8px; }
+        .nav button { width: 38px; height: 38px; border-radius: 12px; }
+        .rocker { width: 38px; }
+        .rocker button { height: 40px; }
+        .app { width: 52px; }
         #tile.upnp .level [data-vol] { display: none; }
     }
 </style>
@@ -253,14 +265,13 @@
         <symbol id="i-hdmi" viewBox="0 0 24 24"><path d="M4 8h16v5l-3 3H7l-3-3z"/><path d="M8 11h8"/></symbol>
     </svg>
 
-    <div class="bar">
-        <span class="led" id="ledPower"><i></i><span data-t="On">On</span></span>
-        <span class="led" id="ledLink"><i></i><span data-t="Connected">Connected</span></span>
-        <span class="led" id="ledApp"><i></i><span data-t="App">App</span></span>
-        <button type="button" class="power" id="power" data-tip="Switch on / off"><svg class="i"><use href="#i-power"/></svg></button>
-    </div>
-
+    <div class="head">
     <div class="display">
+        <div class="leds">
+            <span class="led" id="ledPower"><i></i><span data-t="On">On</span></span>
+            <span class="led" id="ledLink"><i></i><span data-t="Connected">Connected</span></span>
+            <span class="led" id="ledApp"><i></i><span data-t="App">App</span></span>
+        </div>
         <div class="readout">
             <div class="art" id="art"></div>
             <div class="rd">
@@ -277,6 +288,8 @@
             <button type="button" data-vol="-1" data-repeat="1" data-tip="Volume −"><svg class="i"><use href="#i-minus"/></svg></button>
             <button type="button" data-vol="1" data-repeat="1" data-tip="Volume +"><svg class="i"><use href="#i-plus"/></svg></button>
         </div>
+    </div>
+    <button type="button" class="power" id="power" data-tip="Switch on / off"><svg class="i"><use href="#i-power"/></svg><span class="pl" data-t="POWER">POWER</span></button>
     </div>
 
     <div class="notice" id="notice"></div>
