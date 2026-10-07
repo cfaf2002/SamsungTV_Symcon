@@ -1,0 +1,12 @@
+{
+    "id": "{B4ED1380-CE93-4B77-B804-E79583730725}",
+    "author": "Armin Frohwerk",
+    "name": "Samsung TV",
+    "url": "https://github.com/cfaf2002/SamsungTV_Symcon",
+    "compatibility": {
+        "version": "8.1"
+    },
+    "version": "1.0",
+    "build": 1,
+    "date": 1791302867
+}

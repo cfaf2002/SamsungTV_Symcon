@@ -1,0 +1,267 @@
+{
+    "elements": [
+        {
+            "type": "ExpansionPanel",
+            "caption": "Connection",
+            "expanded": true,
+            "items": [
+                {
+                    "type": "ValidationTextBox",
+                    "name": "Host",
+                    "caption": "IP address or host name of the TV",
+                    "validate": "^[A-Za-z0-9.-]*$",
+                    "width": "320px"
+                },
+                {
+                    "type": "Label",
+                    "name": "DeviceLabel",
+                    "caption": "",
+                    "visible": false
+                },
+                {
+                    "type": "Select",
+                    "name": "Connection",
+                    "caption": "Connection",
+                    "width": "420px",
+                    "options": [
+                        {
+                            "caption": "Automatic",
+                            "value": 0
+                        },
+                        {
+                            "caption": "Encrypted (port 8002, models from 2018)",
+                            "value": 1
+                        },
+                        {
+                            "caption": "Unencrypted (port 8001, models 2016/2017)",
+                            "value": 2
+                        }
+                    ]
+                },
+                {
+                    "type": "Label",
+                    "name": "PairingLabel",
+                    "caption": ""
+                },
+                {
+                    "type": "Button",
+                    "caption": "Pair again",
+                    "onClick": "IPS_RequestAction($id, 'ResetPairing', 0);"
+                },
+                {
+                    "type": "NumberSpinner",
+                    "name": "PollInterval",
+                    "caption": "Check state every",
+                    "suffix": "seconds",
+                    "minimum": 5,
+                    "maximum": 300
+                }
+            ]
+        },
+        {
+            "type": "ExpansionPanel",
+            "caption": "Switching on and off",
+            "items": [
+                {
+                    "type": "Label",
+                    "caption": "The TV is switched on via Wake-on-LAN. On the TV, turn on Settings → General → Network → Expert Settings → “Power On with Mobile”."
+                },
+                {
+                    "type": "ValidationTextBox",
+                    "name": "MAC",
+                    "caption": "MAC address (empty = Wi-Fi MAC reported by the TV; with a network cable enter the LAN MAC)",
+                    "validate": "^([0-9A-Fa-f]{2}[:-]?){5}[0-9A-Fa-f]{2}$|^$",
+                    "width": "600px"
+                },
+                {
+                    "type": "ValidationTextBox",
+                    "name": "Broadcast",
+                    "caption": "Broadcast address",
+                    "validate": "^[0-9.]*$",
+                    "width": "320px"
+                },
+                {
+                    "type": "Button",
+                    "caption": "Send Wake-on-LAN",
+                    "onClick": "IPS_RequestAction($id, 'TestWakeOnLan', 0);"
+                },
+                {
+                    "type": "Select",
+                    "name": "PowerOffMode",
+                    "caption": "Switching off",
+                    "width": "420px",
+                    "options": [
+                        {
+                            "caption": "Press the power button",
+                            "value": 0
+                        },
+                        {
+                            "caption": "Hold the power button (The Frame: off instead of Art Mode)",
+                            "value": 1
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "ExpansionPanel",
+            "caption": "Functions",
+            "items": [
+                {
+                    "type": "CheckBox",
+                    "name": "UseUpnpVolume",
+                    "caption": "Read and set the volume via UPnP (slider and mute)"
+                },
+                {
+                    "type": "NumberSpinner",
+                    "name": "VolumeStep",
+                    "caption": "Volume buttons in the tile: step (0 = like the remote control)",
+                    "minimum": 0,
+                    "maximum": 10
+                },
+                {
+                    "type": "CheckBox",
+                    "name": "ShowSource",
+                    "caption": "Variable for the source (TV, HDMI 1–4)"
+                },
+                {
+                    "type": "CheckBox",
+                    "name": "ShowRemote",
+                    "caption": "Variable with remote control buttons"
+                },
+                {
+                    "type": "List",
+                    "name": "Apps",
+                    "caption": "Apps (favourites)",
+                    "rowCount": 6,
+                    "add": true,
+                    "delete": true,
+                    "sort": {
+                        "column": "Name",
+                        "direction": "ascending"
+                    },
+                    "columns": [
+                        {
+                            "caption": "Name",
+                            "name": "Name",
+                            "width": "220px",
+                            "add": "",
+                            "edit": {
+                                "type": "ValidationTextBox"
+                            }
+                        },
+                        {
+                            "caption": "App ID",
+                            "name": "AppID",
+                            "width": "auto",
+                            "add": "",
+                            "edit": {
+                                "type": "ValidationTextBox"
+                            }
+                        }
+                    ],
+                    "values": []
+                },
+                {
+                    "type": "Button",
+                    "caption": "Load apps from the TV",
+                    "onClick": "IPS_RequestAction($id, 'LoadApps', 0);"
+                }
+            ]
+        },
+        {
+            "type": "ExpansionPanel",
+            "caption": "Tile",
+            "items": [
+                {
+                    "type": "CheckBox",
+                    "name": "UseTile",
+                    "caption": "Own tile for the tile visualization (remote control)"
+                },
+                {
+                    "type": "Select",
+                    "name": "TileTheme",
+                    "caption": "Color scheme of the tile",
+                    "options": [
+                        {
+                            "caption": "Symcon design – colors of the visualization",
+                            "value": 0
+                        },
+                        {
+                            "caption": "Dark",
+                            "value": 1
+                        },
+                        {
+                            "caption": "Light",
+                            "value": 2
+                        }
+                    ]
+                },
+                {
+                    "type": "CheckBox",
+                    "name": "TileShowSources",
+                    "caption": "Show sources"
+                },
+                {
+                    "type": "CheckBox",
+                    "name": "TileShowApps",
+                    "caption": "Show apps"
+                },
+                {
+                    "type": "CheckBox",
+                    "name": "TileShowMedia",
+                    "caption": "Show media and channel buttons"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "type": "RowLayout",
+            "items": [
+                {
+                    "type": "Button",
+                    "caption": "Query now",
+                    "onClick": "IPS_RequestAction($id, 'Refresh', 0);"
+                },
+                {
+                    "type": "Button",
+                    "caption": "Switch on",
+                    "onClick": "SAMTV_PowerOn($id);"
+                },
+                {
+                    "type": "Button",
+                    "caption": "Switch off",
+                    "onClick": "SAMTV_PowerOff($id);"
+                },
+                {
+                    "type": "Button",
+                    "caption": "Home",
+                    "onClick": "SAMTV_SendKey($id, 'KEY_HOME');"
+                }
+            ]
+        }
+    ],
+    "status": [
+        {
+            "code": 102,
+            "icon": "active",
+            "caption": "Ready"
+        },
+        {
+            "code": 104,
+            "icon": "inactive",
+            "caption": "Please enter the IP address of the TV"
+        },
+        {
+            "code": 201,
+            "icon": "error",
+            "caption": "Waiting for confirmation – please allow “Symcon” on the TV"
+        },
+        {
+            "code": 202,
+            "icon": "error",
+            "caption": "Access denied on the TV – allow it there and use “Pair again”"
+        }
+    ]
+}

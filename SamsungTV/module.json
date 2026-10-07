@@ -1,0 +1,18 @@
+{
+    "id": "{0D4C6AE0-8BE5-420E-92C6-9ACD54D1B01D}",
+    "name": "SamsungTV",
+    "type": 3,
+    "vendor": "Samsung",
+    "aliases": [
+        "Samsung TV"
+    ],
+    "parentRequirements": [
+        "{79827379-F36E-4ADA-8A95-5F8D1DC92FA9}"
+    ],
+    "childRequirements": [],
+    "implemented": [
+        "{018EF6B5-AB94-40C6-AA53-46943E824ACF}"
+    ],
+    "prefix": "SAMTV",
+    "url": "https://github.com/cfaf2002/SamsungTV_Symcon"
+}
