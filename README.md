@@ -2,7 +2,7 @@
 
 [![IP-Symcon ab 8.1](https://img.shields.io/badge/IP--Symcon-ab_8.1-0b6fb3.svg)](https://www.symcon.de)
 [![Optimiert für Symcon 9.0](https://img.shields.io/badge/optimiert_f%C3%BCr-Symcon_9.0-0b6fb3.svg)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v81-v90-q1-2026/)
-[![Modul-Version 1.0 (Build 7)](https://img.shields.io/badge/Modul--Version-1.0_(Build_7)-informational.svg)](library.json)
+[![Modul-Version 1.1 (Build 8)](https://img.shields.io/badge/Modul--Version-1.1_(Build_8)-informational.svg)](library.json)
 [![Tests](https://github.com/cfaf2002/SamsungTV_Symcon/actions/workflows/tests.yml/badge.svg)](https://github.com/cfaf2002/SamsungTV_Symcon/actions/workflows/tests.yml)
 [![PHP 8.3 und 8.5](https://img.shields.io/badge/PHP-8.3_%7C_8.5-777bb4.svg?logo=php&logoColor=white)](https://www.php.net)
 [![SDK: IPSModuleStrict](https://img.shields.io/badge/SDK-IPSModuleStrict-success.svg)](https://www.symcon.de/de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/module/)
@@ -41,6 +41,8 @@ Autor: Armin Frohwerk · Lizenz: MIT
 - Lautstärke 0–100 und Stummschaltung über UPnP lesen und setzen (abschaltbar; ohne UPnP über die Tasten)
 - Quellen TV und HDMI 1–4
 - Apps starten (Favoritenliste im Formular, App-Liste lässt sich vom Fernseher laden), Webseite im Browser des Fernsehers öffnen, Text in Eingabefelder schreiben
+- **Laufende App erkennen:** fragt per REST ab, welche Favoriten-App gerade läuft; Variable „App“ und Kachel zeigen sie an
+- **Eigene App-Icons:** pro App ein Bild (Medienobjekt) – in der Kachel erscheint das Icon statt des Namens, ohne Bild ein farbiges Monogramm
 - Kopplung mit Token: Der Fernseher fragt einmal, ob „Symcon“ ihn steuern darf; der Token wird gespeichert
 - Eigene Kachel als Fernbedienung mit Steuerkreuz, Lautstärke, Programm, Medientasten, Quellen und Apps; kleine Kacheln zeigen nur Ein/Aus und Lautstärke
 - Moderne Symcon-Darstellungen statt Variablenprofilen, Basisklasse IPSModuleStrict
@@ -96,11 +98,21 @@ Wurde der Zugriff am Fernseher abgelehnt (Status 202), unter **Einstellungen →
 
 ## 5. Kachel
 
-Die Kachel ist eine Fernbedienung: oben bleibt Platz für Titel und Symbole der Symcon-App, darunter Zustand und Ein/Aus-Taste, Steuerkreuz mit OK, Zurück, Home und Menü, Wippen für Lautstärke und Programm, Stummtaste, Lautstärkeregler (mit UPnP), Medientasten sowie Leisten für Quellen und Apps. Pfeile und Lautstärke wiederholen sich, solange sie gedrückt bleiben.
+Oben bleibt Platz für Titel und Symbole der Symcon-App. Darunter:
 
-- **Farbschema der Kachel:** Symcon-Design (Farben der Visualisierung), Dunkel oder Hell
-- Quellen, Apps sowie Medien- und Programmtasten lassen sich einzeln ausblenden
-- Kleine Kacheln (bis ca. 230 px Höhe) zeigen nur Ein/Aus und Lautstärke
+- **„Jetzt“-Karte:** Icon und Name der laufenden App (bzw. Quelle oder Zustand), Ein/Aus-Taste mit Leuchten, Lautstärkeregler und Stummtaste. Läuft eine App, zeigt ein kleiner Equalizer „läuft“.
+- **App-Dock:** die Favoriten als große Icons wie auf dem Fernseher; die laufende App ist hervorgehoben. Ohne eigenes Bild erscheint ein farbiges Monogramm (z. B. „PV“ für Prime Video).
+- **Steuerkreuz** mit OK, daneben Zurück, Home und Menü sowie die Programmwippe (ohne UPnP auch die Lautstärkewippe). Pfeile und Lautstärke wiederholen sich, solange sie gedrückt bleiben.
+- **Medienleiste** und **Quellen**.
+- **Größen:** klein (bis ca. 300 px Höhe) nur die „Jetzt“-Karte, mittel (bis ca. 470 px) zusätzlich das App-Dock, groß alles.
+- **Farbschema der Kachel:** Symcon-Design (Farben der Visualisierung), Dunkel oder Hell. Quellen, Apps sowie Medien- und Programmtasten lassen sich einzeln ausblenden.
+
+### App-Icons hinterlegen
+
+1. Im Objektbaum ein **Medienobjekt vom Typ Bild** anlegen (z. B. unter der Instanz) und ein Bild hochladen – PNG, JPG, WebP oder SVG, am besten quadratisch (128 × 128 px), höchstens 300 KB.
+2. In der Instanz unter **Funktionen → Apps** beim Eintrag in der Spalte **Icon (Bild)** das Medienobjekt wählen und übernehmen.
+
+Die Reihenfolge der Liste ist die Reihenfolge im App-Dock. Die Icons werden nur beim Öffnen der Kachel und nach einer Änderung übertragen, nicht bei jeder Aktualisierung. Bilder von Marken bitte nur für den privaten Gebrauch verwenden.
 
 ## 6. Variablen und Darstellungen
 
@@ -110,7 +122,7 @@ Die Kachel ist eine Fernbedienung: oben bleibt Platz für Titel und Symbole der 
 | `Volume` | Lautstärke | Integer | Schieberegler 0–100 (mit UPnP) |
 | `Mute` | Stumm | Boolean | Schalter (mit UPnP) |
 | `Source` | Quelle | Integer | Aufzählung TV, HDMI 1–4 |
-| `App` | App | Integer | Aufzählung aus der Favoritenliste |
+| `App` | App | Integer | Aufzählung aus der Favoritenliste; 0 = keine App, zeigt die laufende App, wenn der Fernseher das meldet |
 | `Remote` | Fernbedienung | Integer | Aufzählung mit den wichtigsten Tasten |
 
 Die Quelle zeigt die zuletzt gewählte Quelle; der Fernseher meldet über die lokale Schnittstelle nicht zurück, welche Quelle gerade läuft.
@@ -169,6 +181,7 @@ php tests/stubs.php ../SymconStubs
 
 | Version | Build | Datum | Beschreibung |
 | :-- | --: | :-- | :-- |
+| 1.1 | 8 | 07.10.2026 | Neue Kachel: „Jetzt“-Karte, App-Dock mit eigenen Icons (Medienobjekte) oder Monogramm, überarbeitetes Steuerkreuz; laufende App wird erkannt; App-Liste ohne Sortierung (Reihenfolge = Kachel) |
 | 1.0 | 7 | 07.10.2026 | App-Start merkt sich den Weg, der beim Fernseher funktioniert (SmartThings, WebSocket oder REST), und nimmt ihn beim nächsten Mal sofort |
 | 1.0 | 6 | 07.10.2026 | App-Start wahlweise über die SmartThings-Instanz des Fernsehers (nötig bei Modellen ab 2021); ohne Antwort des Fernsehers Start über REST; App-Liste höchstens stündlich angefragt |
 | 1.0 | 5 | 07.10.2026 | App-Start: Antwort des Fernsehers wird ausgewertet, bei Ablehnung Start über REST; App-IDs der Favoriten werden über den Namen an die App-Liste des Fernsehers angepasst |

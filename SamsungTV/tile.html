@@ -3,12 +3,12 @@
     Copyright (c) 2026 Armin Frohwerk · MIT-Lizenz (siehe LICENSE)
     SPDX-License-Identifier: MIT
 
-    Aufbau: oben frei für Titel und Symbole von Symcon · Zeile mit Zustand und Ein/Aus · Steuerkreuz mit OK, Zurück und Home ·
-    Lautstärke und Programm · Medientasten · Quellen und Apps als Leisten.
-    Kleine Kacheln zeigen nur Kopfzeile und Lautstärke.
+    Aufbau: oben frei für Titel und Symbole von Symcon · „Jetzt“-Karte (laufende App bzw. Quelle, Ein/Aus, Lautstärke) ·
+    App-Dock mit Icons (Medienobjekte als Data-URI, sonst Monogramm) · Steuerkreuz mit Navigation und Wippen ·
+    Medienleiste · Quellen. Klein = nur „Jetzt“-Karte, mittel = Karte und App-Dock, groß = alles.
     Sicherheit: Alle Werte werden per textContent gesetzt, nie als HTML.
-    Leistung:   Keine externen Dateien; Symbole als eingebettete SVG. Die einzige Animation
-                (Schalten) ruht, solange die Kachel nicht sichtbar ist.
+    Leistung:   Keine externen Dateien; Symbole als eingebettete SVG. App-Icons kommen nur beim Laden und bei
+                Änderungen. Animationen (Schalten, „läuft“) ruhen, solange die Kachel nicht sichtbar ist.
 -->
 <style>
     /* ===== Hausstil cfaf2002 · Kachel-Grundlage v1 (siehe STYLEGUIDE.md) =====
@@ -46,15 +46,19 @@
         *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
     }
     /* ===== Ende Kachel-Grundlage ===== */
-
     html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
     body { background: transparent; }
 
     #tile {
+        /* aus den Tokens abgeleitet */
         --tv-key: var(--surface);
         --tv-key-hover: var(--surface-hover);
-        --tv-pad: color-mix(in srgb, var(--fg) 5%, transparent);
+        --tv-glass: color-mix(in srgb, var(--fg) 6%, transparent);
+        --tv-glow: color-mix(in srgb, var(--accent) 45%, transparent);
+        --tv-hero: color-mix(in srgb, var(--accent) 16%, transparent);
         --tv-state: var(--off);
+        /* neutraler Schatten (einzige feste Farbe, wie in den übrigen Kacheln) */
+        --tv-shadow: color-mix(in srgb, #000 22%, transparent);
 
         box-sizing: border-box;
         width: 100%;
@@ -63,7 +67,7 @@
         padding: clamp(40px, 11cqmin, 54px) 12px 12px;
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 12px;
         overflow: hidden;
         container-type: size;
         font-size: 13px;
@@ -74,111 +78,180 @@
     #tile.on { --tv-state: var(--ok); }
     #tile.error { --tv-state: var(--bad); }
 
-    /* Kopfzeile */
-    .head { display: flex; align-items: center; gap: 10px; min-height: 44px; }
-    .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--tv-state); flex: none;
-        box-shadow: 0 0 0 3px color-mix(in srgb, var(--tv-state) 22%, transparent); }
-    .title { flex: 1; min-width: 0; }
-    .name { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .state { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
     button {
-        font: inherit;
-        color: inherit;
-        border: 0;
-        margin: 0;
-        padding: 0;
+        font: inherit; color: inherit; border: 0; margin: 0; padding: 0;
         background: var(--tv-key);
         border-radius: var(--radius);
-        min-height: 36px;
-        min-width: 36px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
+        min-height: 36px; min-width: 36px;
+        display: inline-flex; align-items: center; justify-content: center; gap: 6px;
         cursor: pointer;
-        transition: background-color .15s, transform .08s, opacity .2s;
+        transition: background-color .15s, transform .1s, box-shadow .2s, opacity .2s;
         touch-action: manipulation;
     }
     button:hover { background: var(--tv-key-hover); }
-    button:active, button.hit { transform: scale(.94); background: color-mix(in srgb, var(--accent) 28%, transparent); }
-    button:disabled { opacity: .35; cursor: default; transform: none; }
+    button:active, button.hit { transform: scale(.93); }
+    button.hit { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+    button:disabled { opacity: .3; cursor: default; transform: none; }
     svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 
-    .power { width: 44px; height: 44px; border-radius: 50%; flex: none; }
-    #tile.on .power { background: var(--accent); color: var(--on-accent); }
-    #tile.pending .power { animation: pulse 1.1s ease-in-out infinite; }
-    #tile.paused * { animation-play-state: paused !important; }
-    @keyframes pulse { 50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 30%, transparent); } }
-
-    .notice { display: none; padding: 8px 10px; border-radius: var(--radius-s); background: color-mix(in srgb, var(--bad) 18%, transparent); }
-    #tile.error .notice { display: block; }
-    #tile.error .body { display: none; }
-
-    /* Bedienteil */
-    .body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; transition: opacity .2s; }
-    #tile:not(.on) .body { opacity: .45; }
-    .main { display: flex; gap: 12px; align-items: center; justify-content: center; flex: 1; min-height: 0; }
-
-    .dpad {
+    /* ---------- „Jetzt“-Karte ---------- */
+    .hero {
         position: relative;
-        width: min(200px, 46cqw, 52cqh);
-        aspect-ratio: 1;
-        border-radius: 50%;
-        background: var(--tv-pad);
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        grid-template-areas: "art text power" "vol vol vol";
+        align-items: center;
+        gap: 10px 12px;
+        padding: 12px;
+        border-radius: 18px;
+        background:
+            radial-gradient(120% 140% at 0% 0%, var(--tv-hero), transparent 60%),
+            var(--tv-glass);
         border: 1px solid var(--line);
         flex: none;
     }
+    #tile:not(.on) .hero { background: var(--tv-glass); }
+    .art {
+        grid-area: art;
+        width: 52px; height: 52px; border-radius: 14px;
+        display: grid; place-items: center;
+        background: var(--surface);
+        overflow: hidden;
+        position: relative;
+    }
+    .art svg.i { width: 26px; height: 26px; color: var(--muted); }
+    .art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .text { grid-area: text; min-width: 0; }
+    .now { font-size: 18px; font-weight: 650; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sub { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; margin-top: 2px; min-width: 0; }
+    .sub span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--tv-state); flex: none; }
+    #tile.on .dot { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent); }
+
+    .power { grid-area: power; width: 52px; height: 52px; border-radius: 50%; }
+    .power svg.i { width: 22px; height: 22px; }
+    #tile.on .power { background: var(--accent); color: var(--on-accent); box-shadow: 0 6px 18px var(--tv-glow); }
+    #tile.pending .power { animation: pulse 1.1s ease-in-out infinite; }
+    @keyframes pulse { 50% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 25%, transparent); } }
+
+    .vol { grid-area: vol; display: flex; align-items: center; gap: 8px; }
+    .vol .mute { width: 36px; height: 36px; border-radius: 50%; background: transparent; }
+    .vol .mute:hover { background: var(--surface); }
+    #tile.muted .vol .mute { color: var(--bad); }
+    .vol .step { width: 36px; border-radius: 50%; }
+    .vol .val { width: 30px; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+    .range { flex: 1; position: relative; height: 36px; display: flex; align-items: center; }
+    .range input { -webkit-appearance: none; appearance: none; width: 100%; height: 36px; margin: 0; background: transparent; cursor: pointer; }
+    .range input::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(to right, var(--accent) var(--p, 0%), var(--line) var(--p, 0%)); }
+    .range input::-moz-range-track { height: 6px; border-radius: 3px; background: var(--line); }
+    .range input::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--accent); }
+    .range input::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -6px; border-radius: 50%; background: var(--fg); box-shadow: 0 1px 4px var(--tv-shadow); }
+    .range input::-moz-range-thumb { width: 18px; height: 18px; border: 0; border-radius: 50%; background: var(--fg); }
+    #tile:not(.upnp) .range, #tile:not(.upnp) .vol .val { display: none; }
+    #tile.upnp .vol .step { display: none; }
+    #tile:not(.upnp) .vol { justify-content: center; }
+
+    /* Equalizer „läuft“ */
+    .eq { display: none; align-items: flex-end; gap: 2px; height: 12px; flex: none; }
+    #tile.playing .eq { display: inline-flex; }
+    .eq i { width: 3px; border-radius: 1px; background: var(--accent); animation: eq 1s ease-in-out infinite; }
+    .eq i:nth-child(1) { height: 50%; }
+    .eq i:nth-child(2) { height: 100%; animation-delay: -.3s; }
+    .eq i:nth-child(3) { height: 70%; animation-delay: -.6s; }
+    @keyframes eq { 50% { transform: scaleY(.35); } }
+    .eq i { transform-origin: bottom; }
+    #tile.paused * { animation-play-state: paused !important; }
+
+    .notice { display: none; padding: 10px 12px; border-radius: var(--radius); background: color-mix(in srgb, var(--bad) 18%, transparent); }
+    #tile.error .notice { display: block; }
+    #tile.error .body { display: none; }
+
+    /* ---------- Bedienteil ---------- */
+    .body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; transition: opacity .25s; }
+    #tile:not(.on) .body { opacity: .4; }
+
+    /* App-Dock */
+    .dock { display: flex; gap: 12px; overflow-x: auto; scrollbar-width: none; padding: 2px 2px 4px; flex: none; scroll-snap-type: x proximity; }
+    .dock::-webkit-scrollbar { display: none; }
+    .dock:empty { display: none; }
+    .app { flex: none; width: 64px; display: flex; flex-direction: column; align-items: center; gap: 6px; background: transparent; padding: 0; border-radius: 16px; min-height: 0; scroll-snap-align: start; }
+    .app:hover { background: transparent; }
+    .app .ico {
+        width: 56px; height: 56px; border-radius: 16px;
+        display: grid; place-items: center; overflow: hidden; position: relative;
+        background: var(--surface);
+        box-shadow: 0 2px 8px var(--tv-shadow);
+        transition: transform .15s, box-shadow .2s;
+    }
+    .app:hover .ico { transform: translateY(-2px); }
+    .app .ico img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .app .lbl { font-size: 11px; color: var(--muted); width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .app.run .ico { box-shadow: 0 0 0 2px var(--accent), 0 6px 16px var(--tv-glow); }
+    .app.run .lbl { color: var(--fg); font-weight: 600; }
+    .mono { width: 100%; height: 100%; display: grid; place-items: center; font-size: 20px; font-weight: 700; letter-spacing: -.02em; color: var(--on-accent);
+        background: linear-gradient(135deg, var(--m1), color-mix(in srgb, var(--m1) 60%, var(--popup))); }
+
+    /* Steuerkreuz, Navigation und Wippen */
+    .deck { flex: 1; min-height: 0; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; }
+    .nav { display: flex; flex-direction: column; gap: 10px; }
+    .nav button { width: 44px; height: 44px; border-radius: 14px; }
+    .dpad {
+        justify-self: center;
+        position: relative;
+        width: min(210px, 52cqw, 46cqh);
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background:
+            radial-gradient(circle at 50% 50%, transparent 31%, var(--tv-glass) 32%),
+            conic-gradient(from 225deg, color-mix(in srgb, var(--fg) 10%, transparent), transparent 25%, color-mix(in srgb, var(--fg) 10%, transparent) 50%, transparent 75%, color-mix(in srgb, var(--fg) 10%, transparent));
+        border: 1px solid var(--line);
+        box-shadow: inset 0 1px 0 color-mix(in srgb, var(--fg) 8%, transparent);
+    }
     .dpad button { position: absolute; background: transparent; border-radius: 50%; }
     .dpad button:hover { background: var(--surface); }
-    .dpad .up    { top: 4%;  left: 34%; width: 32%; height: 28%; }
-    .dpad .down  { bottom: 4%; left: 34%; width: 32%; height: 28%; }
-    .dpad .left  { left: 4%; top: 34%; width: 28%; height: 32%; }
-    .dpad .right { right: 4%; top: 34%; width: 28%; height: 32%; }
-    .dpad .ok    { left: 33%; top: 33%; width: 34%; height: 34%; background: var(--tv-key); font-weight: 600; }
-    .dpad .ok:hover { background: var(--tv-key-hover); }
-
-    .side { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-    .row { display: flex; gap: 8px; align-items: center; }
-    .row > button { flex: 1; }
-    .nav button { min-width: 48px; padding: 0 10px; }
-
-    .rocker { display: flex; flex-direction: column; align-items: stretch; background: var(--tv-key); border-radius: var(--pill); width: 48px; overflow: hidden; }
-    .rocker button { background: transparent; border-radius: 0; height: 40px; }
-    .rocker button:hover { background: var(--surface); }
-    .rocker .label { text-align: center; font-size: 11px; color: var(--muted); padding: 2px 0; font-variant-numeric: tabular-nums; }
-    .rockers { display: flex; gap: 8px; align-items: center; }
-
-    /* Lautstärke mit UPnP */
-    .volume { display: none; align-items: center; gap: 8px; }
-    #tile.upnp .volume { display: flex; }
-    .volume input { flex: 1; min-width: 0; accent-color: var(--accent); height: 36px; margin: 0; }
-    .volume .val { width: 32px; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
-    #tile.muted .mute { color: var(--bad); }
-
-    .media { display: none; gap: 8px; }
-    #tile.show-media .media { display: flex; }
-    .media button { flex: 1; }
-
-    .strip { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; flex: none; }
-    .strip::-webkit-scrollbar { display: none; }
-    .strip:empty { display: none; }
-    .strip button { padding: 0 12px; border-radius: var(--pill); white-space: nowrap; flex: none; font-size: 12px; }
-    .strip button.sel { background: var(--accent); color: var(--on-accent); }
-
-    /* Kleine Kachel: nur Kopfzeile und Lautstärke */
-    .mini { display: none; gap: 8px; }
-    @container (max-height: 270px) {
-        .main, .media, .strip { display: none !important; }
-        .mini { display: flex; }
-        .mini button { flex: 1; }
+    .dpad .up    { top: 3%;    left: 34%; width: 32%; height: 28%; }
+    .dpad .down  { bottom: 3%; left: 34%; width: 32%; height: 28%; }
+    .dpad .left  { left: 3%;   top: 34%;  width: 28%; height: 32%; }
+    .dpad .right { right: 3%;  top: 34%;  width: 28%; height: 32%; }
+    .dpad .ok {
+        left: 32%; top: 32%; width: 36%; height: 36%;
+        background: var(--tv-key); font-weight: 700; letter-spacing: .02em;
+        box-shadow: 0 2px 10px var(--tv-shadow);
     }
-    @container (max-height: 160px) {
+    .dpad .ok:hover { background: var(--tv-key-hover); }
+    .rockers { display: flex; gap: 10px; }
+    .rocker { display: flex; flex-direction: column; align-items: stretch; width: 44px; border-radius: var(--pill); background: var(--tv-key); overflow: hidden; }
+    .rocker button { background: transparent; border-radius: 0; height: 44px; }
+    .rocker button:hover { background: var(--surface); }
+    .rocker .label { text-align: center; font-size: 10px; font-weight: 600; letter-spacing: .06em; color: var(--muted); padding: 2px 0; }
+    #tile.upnp .rocker.volr { display: none; }
+
+    /* Medienleiste */
+    .media { display: none; justify-content: space-between; gap: 4px; padding: 4px; border-radius: var(--pill); background: var(--tv-glass); border: 1px solid var(--line); flex: none; }
+    #tile.show-media .media { display: flex; }
+    .media button { flex: 1; background: transparent; border-radius: var(--pill); height: 40px; }
+    .media button:hover { background: var(--surface); }
+    .media .play { color: var(--accent); }
+
+    /* Quellen */
+    .sources { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; flex: none; }
+    .sources::-webkit-scrollbar { display: none; }
+    .sources:empty { display: none; }
+    .sources button { padding: 0 14px; border-radius: var(--pill); white-space: nowrap; flex: none; font-size: 12px; font-weight: 500; }
+    .sources button.sel { background: var(--accent); color: var(--on-accent); }
+
+    /* Größen: klein = nur „Jetzt“-Karte, mittel = Karte und App-Dock */
+    @container (max-height: 300px) {
         .body { display: none; }
     }
-    @container (max-width: 300px) {
-        .main { flex-direction: column; }
-        .dpad { width: min(170px, 80cqw, 34cqh); }
+    @container (max-height: 470px) {
+        .deck, .media, .sources { display: none !important; }
+    }
+    @container (max-width: 340px) {
+        .deck { grid-template-columns: 1fr auto; }
+        .nav { grid-column: 1 / -1; flex-direction: row; justify-content: center; order: 3; }
+        .dpad { width: min(170px, 60cqw, 34cqh); }
+        .power, .art { width: 46px; height: 46px; }
     }
 </style>
 
@@ -193,6 +266,7 @@
         <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></symbol>
         <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
         <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+        <symbol id="i-vol" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></symbol>
         <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l4 6M21 9l-4 6"/></symbol>
         <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"/></symbol>
         <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
@@ -200,20 +274,38 @@
         <symbol id="i-rew" viewBox="0 0 24 24"><path d="M11 6l-7 6 7 6zM20 6l-7 6 7 6z"/></symbol>
         <symbol id="i-ff" viewBox="0 0 24 24"><path d="M4 6l7 6-7 6zM13 6l7 6-7 6z"/></symbol>
         <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+        <symbol id="i-tv" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+        <symbol id="i-hdmi" viewBox="0 0 24 24"><path d="M4 8h16v5l-3 3H7l-3-3z"/><path d="M8 11h8"/></symbol>
     </svg>
 
-    <div class="head">
-        <span class="dot" aria-hidden="true"></span>
-        <div class="title">
-            <div class="state" id="state"></div>
+    <!-- „Jetzt“-Karte: was läuft, Ein/Aus und Lautstärke -->
+    <div class="hero">
+        <div class="art" id="art"><svg class="i"><use href="#i-tv"/></svg></div>
+        <div class="text">
+            <div class="now" id="now">–</div>
+            <div class="sub"><span class="dot" aria-hidden="true"></span><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><span id="sub"></span></div>
         </div>
         <button type="button" class="power" id="power" data-tip="Switch on / off"><svg class="i"><use href="#i-power"/></svg></button>
+        <div class="vol">
+            <button type="button" class="mute" id="mute" data-tip="Mute"><svg class="i"><use href="#i-vol"/></svg></button>
+            <button type="button" class="step" data-vol="-1" data-repeat="1" data-tip="Volume −"><svg class="i"><use href="#i-minus"/></svg></button>
+            <div class="range"><input type="range" id="volume" min="0" max="100" step="1" aria-label="Volume"></div>
+            <button type="button" class="step" data-vol="1" data-repeat="1" data-tip="Volume +"><svg class="i"><use href="#i-plus"/></svg></button>
+            <span class="val" id="volVal"></span>
+        </div>
     </div>
 
     <div class="notice" id="notice"></div>
 
     <div class="body">
-        <div class="main">
+        <div class="dock" id="apps"></div>
+
+        <div class="deck">
+            <div class="nav">
+                <button type="button" data-key="KEY_RETURN" data-tip="Back"><svg class="i"><use href="#i-back"/></svg></button>
+                <button type="button" data-key="KEY_HOME" data-tip="Home"><svg class="i"><use href="#i-home"/></svg></button>
+                <button type="button" data-key="KEY_MENU" data-tip="Menu"><svg class="i"><use href="#i-menu"/></svg></button>
+            </div>
             <div class="dpad">
                 <button type="button" class="up"    data-key="KEY_UP"    data-repeat="1" data-tip="Up"><svg class="i"><use href="#i-up"/></svg></button>
                 <button type="button" class="left"  data-key="KEY_LEFT"  data-repeat="1" data-tip="Left"><svg class="i"><use href="#i-left"/></svg></button>
@@ -221,49 +313,29 @@
                 <button type="button" class="right" data-key="KEY_RIGHT" data-repeat="1" data-tip="Right"><svg class="i"><use href="#i-right"/></svg></button>
                 <button type="button" class="down"  data-key="KEY_DOWN"  data-repeat="1" data-tip="Down"><svg class="i"><use href="#i-down"/></svg></button>
             </div>
-            <div class="side">
-                <div class="row nav">
-                    <button type="button" data-key="KEY_RETURN" data-tip="Back"><svg class="i"><use href="#i-back"/></svg></button>
-                    <button type="button" data-key="KEY_HOME" data-tip="Home"><svg class="i"><use href="#i-home"/></svg></button>
-                    <button type="button" data-key="KEY_MENU" data-tip="Menu"><svg class="i"><use href="#i-menu"/></svg></button>
+            <div class="rockers">
+                <div class="rocker volr">
+                    <button type="button" data-vol="1" data-repeat="1" data-tip="Volume +"><svg class="i"><use href="#i-plus"/></svg></button>
+                    <div class="label" data-t="VOL">VOL</div>
+                    <button type="button" data-vol="-1" data-repeat="1" data-tip="Volume −"><svg class="i"><use href="#i-minus"/></svg></button>
                 </div>
-                <div class="rockers">
-                    <div class="rocker vol">
-                        <button type="button" data-vol="1" data-repeat="1" data-tip="Volume +"><svg class="i"><use href="#i-plus"/></svg></button>
-                        <div class="label" id="volLabel" data-t="VOL">VOL</div>
-                        <button type="button" data-vol="-1" data-repeat="1" data-tip="Volume −"><svg class="i"><use href="#i-minus"/></svg></button>
-                    </div>
-                    <div class="rocker ch">
-                        <button type="button" data-key="KEY_CHUP" data-tip="Channel +"><svg class="i"><use href="#i-up"/></svg></button>
-                        <div class="label" data-t="CH">CH</div>
-                        <button type="button" data-key="KEY_CHDOWN" data-tip="Channel −"><svg class="i"><use href="#i-down"/></svg></button>
-                    </div>
-                    <button type="button" class="mute" id="mute" data-tip="Mute"><svg class="i"><use href="#i-mute"/></svg></button>
+                <div class="rocker">
+                    <button type="button" data-key="KEY_CHUP" data-tip="Channel +"><svg class="i"><use href="#i-up"/></svg></button>
+                    <div class="label" data-t="CH">CH</div>
+                    <button type="button" data-key="KEY_CHDOWN" data-tip="Channel −"><svg class="i"><use href="#i-down"/></svg></button>
                 </div>
             </div>
         </div>
 
-        <div class="volume">
-            <input type="range" id="volume" min="0" max="100" step="1" aria-label="Volume">
-            <span class="val" id="volVal"></span>
-        </div>
-
-        <div class="mini">
-            <button type="button" class="step" data-vol="-1" data-repeat="1" data-tip="Volume −"><svg class="i"><use href="#i-minus"/></svg></button>
-            <button type="button" class="step" data-vol="1" data-repeat="1" data-tip="Volume +"><svg class="i"><use href="#i-plus"/></svg></button>
-            <button type="button" class="mute" id="mute3" data-tip="Mute"><svg class="i"><use href="#i-mute"/></svg></button>
-        </div>
-
         <div class="media">
             <button type="button" data-key="KEY_REWIND" data-tip="Rewind"><svg class="i"><use href="#i-rew"/></svg></button>
-            <button type="button" data-key="KEY_PLAY" data-tip="Play"><svg class="i"><use href="#i-play"/></svg></button>
+            <button type="button" class="play" data-key="KEY_PLAY" data-tip="Play"><svg class="i"><use href="#i-play"/></svg></button>
             <button type="button" data-key="KEY_PAUSE" data-tip="Pause"><svg class="i"><use href="#i-pause"/></svg></button>
             <button type="button" data-key="KEY_STOP" data-tip="Stop"><svg class="i"><use href="#i-stop"/></svg></button>
             <button type="button" data-key="KEY_FF" data-tip="Fast forward"><svg class="i"><use href="#i-ff"/></svg></button>
         </div>
 
-        <div class="strip" id="sources"></div>
-        <div class="strip" id="apps"></div>
+        <div class="sources" id="sources"></div>
     </div>
 </div>
 
@@ -281,7 +353,10 @@
         var $ = function (id) { return document.getElementById(id); };
         var tile = $('tile');
         var last = {};
+        var icons = {};          // App-Icons (Data-URI), kommen nur beim Laden und bei Änderungen
         var dragging = false;
+        // Farben der Monogramme aus den Tokens
+        var MONO = ['var(--accent)', 'var(--info)', 'var(--ok)', 'var(--warn)', 'var(--bad)', 'var(--off)'];
 
         function t(s) {
             return typeof window.translate === 'function' ? window.translate(s) : s;
@@ -293,15 +368,39 @@
             }
         }
 
-        function flash(el) {
-            el.classList.add('hit');
-            setTimeout(function () { el.classList.remove('hit'); }, 140);
+        function el(tag, cls, text) {
+            var e = document.createElement(tag);
+            if (cls) e.className = cls;
+            if (text !== undefined) e.textContent = text;
+            return e;
         }
 
-        // Taste bzw. Lautstärkeschritt einer Schaltfläche ausführen
-        function fire(el) {
-            if (el.dataset.key) send('Key', el.dataset.key);
-            else if (el.dataset.vol) send('VolumeStep', parseInt(el.dataset.vol, 10));
+        function flash(e) {
+            e.classList.add('hit');
+            setTimeout(function () { e.classList.remove('hit'); }, 140);
+        }
+
+        // Bild der App (Data-URI) oder farbiges Monogramm
+        function appArt(app) {
+            var src = icons[String(app.v)];
+            if (src && /^data:image\/(png|jpeg|gif|webp|svg\+xml);base64,/.test(src)) {
+                var img = el('img');
+                img.alt = '';
+                img.src = src;
+                return img;
+            }
+            var words = String(app.label || '?').trim().split(/\s+/);
+            var letters = words.length > 1 ? words[0].charAt(0) + words[1].charAt(0) : words[0].charAt(0) + (/\+/.test(words[0]) ? '+' : '');
+            var hash = 0;
+            for (var i = 0; i < app.label.length; i++) hash = (hash * 31 + app.label.charCodeAt(i)) >>> 0;
+            var m = el('div', 'mono', letters.toUpperCase());
+            m.style.setProperty('--m1', MONO[hash % MONO.length]);
+            return m;
+        }
+
+        function fire(e) {
+            if (e.dataset.key) send('Key', e.dataset.key);
+            else if (e.dataset.vol) send('VolumeStep', parseInt(e.dataset.vol, 10));
         }
 
         // Gedrückt halten wiederholt (Pfeile, Lautstärke): nach 450 ms alle 220 ms
@@ -311,25 +410,25 @@
             clearInterval(repeatTimer);
             holdTimer = repeatTimer = 0;
         }
-        Array.prototype.forEach.call(document.querySelectorAll('[data-key], [data-vol]'), function (el) {
-            el.addEventListener('click', function (ev) {
-                if (el.dataset.repeated === '1') { el.dataset.repeated = ''; return; }
-                fire(el);
-                flash(el);
+        Array.prototype.forEach.call(document.querySelectorAll('[data-key], [data-vol]'), function (b) {
+            b.addEventListener('click', function (ev) {
+                if (b.dataset.repeated === '1') { b.dataset.repeated = ''; return; }
+                fire(b);
+                flash(b);
                 ev.preventDefault();
             });
-            if (el.dataset.repeat) {
-                el.addEventListener('pointerdown', function () {
+            if (b.dataset.repeat) {
+                b.addEventListener('pointerdown', function () {
                     stopRepeat();
-                    el.dataset.repeated = '';
+                    b.dataset.repeated = '';
                     holdTimer = setTimeout(function () {
-                        el.dataset.repeated = '1';
-                        fire(el);
-                        repeatTimer = setInterval(function () { fire(el); flash(el); }, 220);
+                        b.dataset.repeated = '1';
+                        fire(b);
+                        repeatTimer = setInterval(function () { fire(b); flash(b); }, 220);
                     }, 450);
                 });
                 ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (n) {
-                    el.addEventListener(n, stopRepeat);
+                    b.addEventListener(n, stopRepeat);
                 });
             }
         });
@@ -338,59 +437,120 @@
             send('Power', !last.on);
             flash($('power'));
         });
-
-        ['mute', 'mute3'].forEach(function (id) {
-            $(id).addEventListener('click', function () {
-                if (last.upnp) send('Mute', !last.mute);
-                else send('Key', 'KEY_MUTE');
-                flash($(id));
-            });
+        $('mute').addEventListener('click', function () {
+            if (last.upnp) send('Mute', !last.mute);
+            else send('Key', 'KEY_MUTE');
+            flash($('mute'));
         });
 
         var vol = $('volume');
+        function paintVolume(v) {
+            vol.style.setProperty('--p', v + '%');
+            $('volVal').textContent = String(v);
+        }
         vol.addEventListener('input', function () {
             dragging = true;
-            $('volVal').textContent = vol.value;
+            paintVolume(parseInt(vol.value, 10));
         });
         vol.addEventListener('change', function () {
             dragging = false;
             send('Volume', parseInt(vol.value, 10));
         });
 
-        // Leiste mit Schaltflächen (Quellen, Apps) nur bei Änderung neu bauen
-        function strip(box, list, selected, ident) {
-            var key = JSON.stringify(list);
-            if (box.dataset.key !== key) {
-                box.dataset.key = key;
+        // App-Dock und Quellen nur bei Änderung neu bauen
+        var appsKey = '';
+        function renderApps(list) {
+            var box = $('apps');
+            var key = JSON.stringify(list) + '|' + Object.keys(icons).join(',') + '|' + (last.iconsKey || '');
+            if (key !== appsKey) {
+                appsKey = key;
                 box.textContent = '';
-                (list || []).forEach(function (item) {
-                    var b = document.createElement('button');
+                (list || []).forEach(function (app) {
+                    var b = el('button', 'app');
                     b.type = 'button';
-                    b.textContent = item.label;
-                    b.dataset.v = String(item.v);
+                    b.dataset.v = String(app.v);
+                    b.title = app.label;
+                    var ico = el('div', 'ico');
+                    ico.appendChild(appArt(app));
+                    b.appendChild(ico);
+                    b.appendChild(el('div', 'lbl', app.label));
                     b.addEventListener('click', function () {
-                        send(ident, item.v);
+                        send('App', app.v);
                         flash(b);
                     });
                     box.appendChild(b);
                 });
             }
             Array.prototype.forEach.call(box.children, function (b) {
-                b.classList.toggle('sel', !!last.on && parseInt(b.dataset.v, 10) === selected);
+                var run = !!last.on && parseInt(b.dataset.v, 10) === (last.running || last.app);
+                b.classList.toggle('run', run);
+                b.setAttribute('aria-pressed', run ? 'true' : 'false');
             });
         }
 
-        function stateText(d) {
-            if (d.pending === 'on' && !d.on) return t('Switching on …');
-            if (d.pending === 'off' && d.on) return t('Switching off …');
-            if (!d.on) return t('Off');
-            if (d.pairing === 1 || (!d.connected && d.pairing !== 3)) return t('Please allow “Symcon” on the TV');
-            if (!d.connected) return t('Connecting …');
-            return d.model ? t('On') + ' · ' + d.model : t('On');
+        var sourcesKey = '';
+        function renderSources(list) {
+            var box = $('sources');
+            var key = JSON.stringify(list);
+            if (key !== sourcesKey) {
+                sourcesKey = key;
+                box.textContent = '';
+                (list || []).forEach(function (s) {
+                    var b = el('button', '', s.label);
+                    b.type = 'button';
+                    b.dataset.v = String(s.v);
+                    b.addEventListener('click', function () { send('Source', s.v); flash(b); });
+                    box.appendChild(b);
+                });
+            }
+            Array.prototype.forEach.call(box.children, function (b) {
+                b.classList.toggle('sel', !!last.on && !last.running && parseInt(b.dataset.v, 10) === last.source);
+            });
+        }
+
+        function findApp(v) {
+            var found = null;
+            (last.apps || []).forEach(function (a) { if (a.v === v) found = a; });
+            return found;
+        }
+
+        function sourceLabel() {
+            var found = '';
+            (last.sources || []).forEach(function (s) { if (s.v === last.source) found = s.label; });
+            return found;
+        }
+
+        // „Jetzt“-Karte: laufende App, Quelle oder Zustand
+        function renderHero(d) {
+            var art = $('art');
+            var app = d.on && d.running ? findApp(d.running) : null;
+            var title, sub;
+            if (d.pending === 'on' && !d.on) { title = t('Switching on …'); sub = d.model || ''; }
+            else if (d.pending === 'off' && d.on) { title = t('Switching off …'); sub = d.model || ''; }
+            else if (!d.on) { title = t('Off'); sub = d.model || ''; }
+            else if (app) { title = app.label; sub = t('is running'); }
+            else { title = sourceLabel() || t('On'); sub = d.model || ''; }
+            if (d.on && !d.connected && d.pairing !== 3) sub = t('Please allow “Symcon” on the TV');
+
+            $('now').textContent = title;
+            $('sub').textContent = sub;
+            art.textContent = '';
+            if (app) {
+                art.appendChild(appArt(app));
+            } else {
+                var ns = 'http://www.w3.org/2000/svg';
+                var svg = document.createElementNS(ns, 'svg');
+                svg.setAttribute('class', 'i');
+                var use = document.createElementNS(ns, 'use');
+                use.setAttribute('href', d.on && d.source > 0 ? '#i-hdmi' : '#i-tv');
+                svg.appendChild(use);
+                art.appendChild(svg);
+            }
         }
 
         function render(d) {
             last = d || {};
+            if (d.icons && typeof d.icons === 'object') icons = d.icons;
             applyTheme(d.theme);
 
             var cls = [];
@@ -400,44 +560,41 @@
             if (d.upnp) cls.push('upnp');
             if (d.mute) cls.push('muted');
             if (d.media) cls.push('show-media');
+            if (d.on && d.running) cls.push('playing');
             if (tile.classList.contains('paused')) cls.push('paused');
             tile.className = cls.join(' ');
 
-            $('state').textContent = stateText(d);
+            renderHero(d);
             $('notice').textContent = d.error || '';
             $('power').setAttribute('aria-pressed', d.on ? 'true' : 'false');
             $('power').title = t(d.on ? 'Switch off' : 'Switch on');
 
             var active = !!d.on && !d.error;
-            Array.prototype.forEach.call(document.querySelectorAll('.body button, .body input'), function (el) {
-                el.disabled = !active;
+            Array.prototype.forEach.call(document.querySelectorAll('.body button, .vol button, .vol input'), function (b) {
+                b.disabled = !active;
             });
 
-            if (typeof d.volume === 'number') {
-                if (!dragging) vol.value = String(d.volume);
-                $('volVal').textContent = dragging ? vol.value : String(d.volume);
-                $('volLabel').textContent = String(d.volume);
-            } else {
-                $('volLabel').textContent = t('VOL');
+            if (typeof d.volume === 'number' && !dragging) {
+                vol.value = String(d.volume);
+                paintVolume(d.volume);
             }
-            ['mute', 'mute3'].forEach(function (id) {
-                $(id).setAttribute('aria-pressed', d.mute ? 'true' : 'false');
-            });
+            $('mute').querySelector('use').setAttribute('href', d.mute ? '#i-mute' : '#i-vol');
+            $('mute').setAttribute('aria-pressed', d.mute ? 'true' : 'false');
 
-            strip($('sources'), d.sources, d.source, 'Source');
-            strip($('apps'), d.apps, d.app, 'App');
+            renderApps(d.apps);
+            renderSources(d.sources);
         }
 
         // Beschriftungen und Hinweise übersetzen
-        Array.prototype.forEach.call(document.querySelectorAll('[data-t]'), function (el) {
-            el.textContent = t(el.getAttribute('data-t'));
+        Array.prototype.forEach.call(document.querySelectorAll('[data-t]'), function (e) {
+            e.textContent = t(e.getAttribute('data-t'));
         });
-        Array.prototype.forEach.call(document.querySelectorAll('[data-tip]'), function (el) {
-            el.title = t(el.getAttribute('data-tip'));
-            el.setAttribute('aria-label', el.title);
+        Array.prototype.forEach.call(document.querySelectorAll('[data-tip]'), function (e) {
+            e.title = t(e.getAttribute('data-tip'));
+            e.setAttribute('aria-label', e.title);
         });
 
-        // Animation nur, solange die Kachel sichtbar ist
+        // Animationen nur, solange die Kachel sichtbar ist
         var inView = true;
         function updatePause() {
             tile.classList.toggle('paused', document.hidden || !inView);

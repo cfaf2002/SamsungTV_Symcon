@@ -38,6 +38,46 @@ foreach (glob($stubs . '/*.php') as $file) {
             $code
         );
     }
+    if (basename($file) === 'GlobalStubs.php') {
+        // Medienobjekte sind in den Stubs nur leere Hüllen: Datei und Inhalt im Speicher nachbilden
+        $code = str_replace(
+            [
+                'function IPS_GetMedia(int $MediaID)
+{
+    return [];',
+                'function IPS_GetMediaContent(int $MediaID)
+{
+    return \'\';',
+                'function IPS_SetMediaContent(int $MediaID, string $Content)
+{
+    return true;',
+                'function IPS_SetMediaFile(int $MediaID, string $FilePath, bool $FileMustExists)
+{
+    return true;',
+            ],
+            [
+                'function IPS_GetMedia(int $MediaID)
+{
+    return [\'MediaID\' => $MediaID, \'MediaType\' => 1, \'MediaFile\' => $GLOBALS[\'testMedia\'][$MediaID][\'file\'] ?? \'\', \'MediaCRC\' => md5($GLOBALS[\'testMedia\'][$MediaID][\'content\'] ?? \'\'), \'MediaUpdated\' => 0];',
+                'function IPS_GetMediaContent(int $MediaID)
+{
+    return $GLOBALS[\'testMedia\'][$MediaID][\'content\'] ?? \'\';',
+                'function IPS_SetMediaContent(int $MediaID, string $Content)
+{
+    $GLOBALS[\'testMedia\'][$MediaID][\'content\'] = $Content;
+    return true;',
+                'function IPS_SetMediaFile(int $MediaID, string $FilePath, bool $FileMustExists)
+{
+    $GLOBALS[\'testMedia\'][$MediaID][\'file\'] = $FilePath;
+    return true;',
+            ],
+            $code,
+            $replaced
+        );
+        if ($replaced !== 4) {
+            fwrite(STDERR, 'Medien-Stubs nicht gefunden (' . $replaced . '/4)' . PHP_EOL);
+        }
+    }
     file_put_contents($tmp . '/stubs/' . basename($file), $code);
 }
 
@@ -339,6 +379,41 @@ try {
         ok(str_contains(SAMTV_GetVisualizationTile($id), '"theme":' . $theme), 'Kachel mit Farbschema ' . $theme);
     }
     ok(!str_contains(SAMTV_GetVisualizationTile($id), '</script>","'), 'App-Namen in der Kachel sicher eingebettet');
+
+    // App-Icons und laufende App
+    $png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    $media = IPS_CreateMedia(1);
+    IPS_SetMediaFile($media, 'netflix.png', false);
+    IPS_SetMediaContent($media, $png);
+    IPS_SetProperty($id, 'Apps', json_encode([
+        ['Name' => 'Netflix', 'AppID' => '3201907018807', 'Icon' => $media],
+        ['Name' => 'Disney+', 'AppID' => '3201901017640', 'Icon' => 0],
+        ['Name' => 'Nicht da', 'AppID' => '9999999999999', 'Icon' => 0],
+    ]));
+    IPS_ApplyChanges($id);
+    $tileHtml = SAMTV_GetVisualizationTile($id);
+    ok(str_contains($tileHtml, 'data:image\/png;base64,' . str_replace('/', '\/', $png)), 'Icon als Data-URI in der Kachel');
+    ok(!str_contains(attr($id, 'TileData'), 'base64'), 'Icons nicht in jeder Aktualisierung');
+    tv(['launched' => '3201901017640']);
+    SAMTV_Update($id);
+    ok(GetValue(IPS_GetObjectIDByIdent('App', $id)) === 2, 'Laufende App erkannt (Disney+)');
+    ok(json_decode(attr($id, 'TileData'), true)['running'] === 2, 'Kachel zeigt die laufende App');
+    tv(['launched' => '']);
+    SAMTV_Update($id);
+    ok(GetValue(IPS_GetObjectIDByIdent('App', $id)) === 0, 'Keine App sichtbar: App = 0');
+    $key = attr($id, 'TileIconsKey');
+    IPS_SetMediaContent($media, base64_encode('<svg xmlns="http://www.w3.org/2000/svg"/>'));
+    IPS_SetMediaFile($media, 'netflix.svg', false);
+    tv(['launched' => '3201907018807']);
+    SAMTV_Update($id);
+    ok(attr($id, 'TileIconsKey') !== $key, 'Geändertes Icon wird an die Kachel geschickt');
+    ok(str_contains(SAMTV_GetVisualizationTile($id), 'data:image\/svg+xml;base64,'), 'SVG-Icon mit passendem Typ');
+    tv(['noAppStatus' => true]);
+    SAMTV_Update($id);
+    SAMTV_Update($id);
+    SAMTV_Update($id);
+    ok(attr($id, 'AppStatusFailures') === 3, 'Kein App-Status vom Fernseher: nach drei Versuchen abgeschaltet');
+    tv(['noAppStatus' => false, 'launched' => '']);
 
     // Aus- und Einschalten
     ok(SAMTV_PowerOff($id) === true && lastSent()['params']['DataOfCmd'] === 'KEY_POWER', 'Ausschalten mit KEY_POWER');

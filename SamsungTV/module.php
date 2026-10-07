@@ -123,6 +123,8 @@ class SamsungTV extends IPSModuleStrict
         $this->RegisterAttributeInteger('PowerTargetUntil', 0);
         $this->RegisterAttributeString('InstalledApps', '');
         $this->RegisterAttributeString('AppMethod', '');
+        $this->RegisterAttributeInteger('AppStatusFailures', 0);
+        $this->RegisterAttributeString('TileIconsKey', '');
         $this->RegisterAttributeString('TileData', '{}');
 
         $this->RegisterTimer('Poll', 0, 'SAMTV_Poll($_IPS[\'TARGET\']);');
@@ -160,8 +162,10 @@ class SamsungTV extends IPSModuleStrict
             $this->WriteAttributeString('Token', '');
             $this->WriteAttributeInteger('Pairing', self::PAIR_UNKNOWN);
             $this->WriteAttributeString('InstalledApps', '');
+            $this->WriteAttributeString('AppMethod', '');
         }
         $this->WriteAttributeInteger('FailCount', 0);
+        $this->WriteAttributeInteger('AppStatusFailures', 0);
 
         if ($host === '') {
             $this->SetTimerInterval('Poll', 0);
@@ -361,6 +365,7 @@ class SamsungTV extends IPSModuleStrict
         if ($on && $this->ReadPropertyBoolean('UseUpnpVolume')) {
             $this->ReadVolume();
         }
+        $this->DetectRunningApp($on);
 
         // Schaltziel erreicht oder abgelaufen
         $target = $this->ReadAttributeString('PowerTarget');
@@ -880,6 +885,54 @@ class SamsungTV extends IPSModuleStrict
         return $ok;
     }
 
+    /**
+     * Fragt per REST ab, welche Favoriten-App sichtbar läuft (GET /api/v2/applications/{id}).
+     * Liefert der Fernseher dafür nie eine Antwort, wird es nach drei Versuchen abgeschaltet.
+     */
+    private function DetectRunningApp(bool $on): void
+    {
+        if (!$this->VariableExists('App')) {
+            return;
+        }
+        if (!$on) {
+            $this->SetValueIfChanged('App', 0);
+            return;
+        }
+        $failures = $this->ReadAttributeInteger('AppStatusFailures');
+        if ($failures >= 3) {
+            return; // vom Fernseher nicht unterstützt
+        }
+        $host = $this->Host();
+        $running = 0;
+        $answered = false;
+        foreach ($this->Apps() as $i => $app) {
+            $raw = $this->HttpRequest('GET', 'http://' . $host . ':8001/api/v2/applications/' . rawurlencode($app['AppID']), '', [], 500, 1500);
+            if ($raw === null) {
+                // 404 = App nicht installiert; das ist eine Antwort
+                $answered = $answered || $this->apiError === 'HTTP 404';
+                continue;
+            }
+            $answered = true;
+            $state = json_decode($raw, true);
+            if (is_array($state) && ($state['visible'] ?? false) === true) {
+                $running = $i + 1;
+                break;
+            }
+        }
+        if (!$answered) {
+            $this->WriteAttributeInteger('AppStatusFailures', $failures + 1);
+            $this->SendDebug('App', 'running app not available (' . ($failures + 1) . '/3)', 0);
+            return;
+        }
+        if ($failures !== 0) {
+            $this->WriteAttributeInteger('AppStatusFailures', 0);
+        }
+        if ($running !== (int) $this->GetValue('App')) {
+            $this->SendDebug('App', 'running: ' . ($running > 0 ? $this->Apps()[$running - 1]['Name'] : 'none'), 0);
+        }
+        $this->SetValueIfChanged('App', $running);
+    }
+
     private function StepVolume(int $direction): void
     {
         $step = $this->ReadPropertyInteger('VolumeStep');
@@ -1107,7 +1160,7 @@ class SamsungTV extends IPSModuleStrict
         }
 
         $apps = $this->Apps();
-        $options = [];
+        $options = [['Value' => 0, 'Caption' => $this->Translate('No app'), 'IconActive' => true, 'IconValue' => 'tv', 'Color' => -1]];
         foreach ($apps as $i => $app) {
             $options[] = ['Value' => $i + 1, 'Caption' => $app['Name'], 'IconActive' => false, 'IconValue' => '', 'Color' => -1];
         }
@@ -1174,10 +1227,60 @@ class SamsungTV extends IPSModuleStrict
             $id = trim((string) ($row['AppID'] ?? ''));
             $name = trim((string) ($row['Name'] ?? ''));
             if ($id !== '' && preg_match('/^[A-Za-z0-9._-]{3,64}$/', $id)) {
-                $apps[] = ['Name' => $name !== '' ? $name : $id, 'AppID' => $id];
+                $apps[] = ['Name' => $name !== '' ? $name : $id, 'AppID' => $id, 'Icon' => max(0, (int) ($row['Icon'] ?? 0))];
             }
         }
         return $apps;
+    }
+
+    /**
+     * Icons der Apps als Data-URI (Medienobjekte aus der App-Liste), Schlüssel = Wert der Variable App.
+     */
+    private function AppIcons(): array
+    {
+        $icons = [];
+        foreach ($this->Apps() as $i => $app) {
+            $media = $app['Icon'];
+            if ($media <= 0 || !IPS_MediaExists($media)) {
+                continue;
+            }
+            $info = IPS_GetMedia($media);
+            if ((int) ($info['MediaType'] ?? -1) !== 1) {
+                continue; // nur Bilder
+            }
+            $content = (string) @IPS_GetMediaContent($media);
+            if ($content === '' || strlen($content) > 400000) {
+                $this->SendDebug('Icon', $app['Name'] . ': image missing or larger than 300 KB', 0);
+                continue;
+            }
+            $mime = match (strtolower(pathinfo((string) ($info['MediaFile'] ?? ''), PATHINFO_EXTENSION))) {
+                'svg'         => 'image/svg+xml',
+                'jpg', 'jpeg' => 'image/jpeg',
+                'gif'         => 'image/gif',
+                'webp'        => 'image/webp',
+                default       => 'image/png',
+            };
+            // nur gültiges Base64 übernehmen
+            if (!preg_match('/^[A-Za-z0-9+\/=\r\n]+$/', $content)) {
+                continue;
+            }
+            $icons[(string) ($i + 1)] = 'data:' . $mime . ';base64,' . preg_replace('/\s+/', '', $content);
+        }
+        return $icons;
+    }
+
+    /**
+     * Fingerabdruck der Icons: ändert sich, wenn ein Bild ausgetauscht oder neu zugeordnet wird.
+     */
+    private function AppIconsKey(): string
+    {
+        $parts = [];
+        foreach ($this->Apps() as $i => $app) {
+            $media = $app['Icon'];
+            $updated = $media > 0 && IPS_MediaExists($media) ? (int) (IPS_GetMedia($media)['MediaUpdated'] ?? 0) . ':' . (string) (IPS_GetMedia($media)['MediaCRC'] ?? '') : '';
+            $parts[] = ($i + 1) . '=' . $media . '@' . $updated;
+        }
+        return md5(implode('|', $parts));
     }
 
     private function StatusFromPairing(): int

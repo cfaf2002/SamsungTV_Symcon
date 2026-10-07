@@ -40,6 +40,24 @@ if ($uri === '/api/v2/' && $method === 'GET') {
     return true;
 }
 
+if (str_starts_with((string) $uri, '/api/v2/applications/') && $method === 'GET') {
+    // App-Status: bekannte Apps laufen, wenn sie zuletzt gestartet wurden; unbekannte = nicht installiert
+    if (!empty($state['noAppStatus'])) {
+        http_response_code(500);
+        return true;
+    }
+    $id = basename((string) $uri);
+    if (!in_array($id, ['3201907018807', '3201901017640', '111299001912', 'org.tizen.browser'], true)) {
+        http_response_code(404);
+        echo '{"code":404}';
+        return true;
+    }
+    $running = ($state['launched'] ?? '') === $id;
+    header('Content-Type: application/json');
+    echo json_encode(['id' => $id, 'name' => $id, 'running' => $running, 'visible' => $running, 'version' => '1.0']);
+    return true;
+}
+
 if (str_starts_with((string) $uri, '/api/v2/applications/') && $method === 'POST') {
     $state['launched'] = basename((string) $uri);
     $save();

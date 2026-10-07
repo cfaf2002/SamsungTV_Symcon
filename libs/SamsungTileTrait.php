@@ -25,6 +25,8 @@ trait SamsungTileTrait
     {
         $html = (string) file_get_contents(__DIR__ . '/../SamsungTV/tile.html');
         $data = $this->TileData();
+        // Icons nur beim Laden der Kachel (und wenn sie sich ändern), nicht bei jeder Aktualisierung
+        $data['icons'] = $this->ReadPropertyBoolean('TileShowApps') ? $this->AppIcons() : [];
         // JSON_HEX_* verhindert, dass Werte wie "</script>" das Skript der Kachel beenden
         $json = (string) json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
         return str_replace('/*INITIAL_DATA*/null', $json, $html);
@@ -42,6 +44,12 @@ trait SamsungTileTrait
         }
         $this->WriteAttributeString('TileData', $json);
         if ($this->ReadPropertyBoolean('UseTile')) {
+            // Icons mitschicken, wenn sie sich seit dem letzten Mal geändert haben
+            if ($data['iconsKey'] !== $this->ReadAttributeString('TileIconsKey')) {
+                $this->WriteAttributeString('TileIconsKey', $data['iconsKey']);
+                $data['icons'] = $this->ReadPropertyBoolean('TileShowApps') ? $this->AppIcons() : [];
+                $json = (string) json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+            }
             $this->UpdateVisualizationValue($json);
         }
     }
@@ -71,7 +79,7 @@ trait SamsungTileTrait
         $apps = [];
         if ($this->ReadPropertyBoolean('TileShowApps')) {
             foreach ($this->Apps() as $i => $app) {
-                $apps[] = ['v' => $i + 1, 'label' => $app['Name']];
+                $apps[] = ['v' => $i + 1, 'label' => $app['Name'], 'icon' => $app['Icon'] > 0];
             }
         }
 
@@ -91,6 +99,9 @@ trait SamsungTileTrait
             'source'    => $this->VariableExists('Source') ? (int) $this->GetValue('Source') : -1,
             'apps'      => $apps,
             'app'       => $this->VariableExists('App') ? (int) $this->GetValue('App') : 0,
+            // läuft gerade: nur sicher bekannt, wenn der Fernseher den App-Status meldet
+            'running'   => $on && $this->ReadAttributeInteger('AppStatusFailures') < 3 && $this->VariableExists('App') ? (int) $this->GetValue('App') : 0,
+            'iconsKey'  => $this->AppIconsKey(),
             'media'     => $this->ReadPropertyBoolean('TileShowMedia'),
         ];
     }

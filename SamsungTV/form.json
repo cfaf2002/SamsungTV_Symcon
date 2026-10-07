@@ -132,19 +132,15 @@
                 {
                     "type": "List",
                     "name": "Apps",
-                    "caption": "Apps (favourites)",
-                    "rowCount": 6,
+                    "caption": "Apps (favourites – order as in the tile)",
+                    "rowCount": 8,
                     "add": true,
                     "delete": true,
-                    "sort": {
-                        "column": "Name",
-                        "direction": "ascending"
-                    },
                     "columns": [
                         {
                             "caption": "Name",
                             "name": "Name",
-                            "width": "220px",
+                            "width": "200px",
                             "add": "",
                             "edit": {
                                 "type": "ValidationTextBox"
@@ -153,10 +149,19 @@
                         {
                             "caption": "App ID",
                             "name": "AppID",
-                            "width": "auto",
+                            "width": "200px",
                             "add": "",
                             "edit": {
                                 "type": "ValidationTextBox"
+                            }
+                        },
+                        {
+                            "caption": "Icon (image)",
+                            "name": "Icon",
+                            "width": "auto",
+                            "add": 0,
+                            "edit": {
+                                "type": "SelectMedia"
                             }
                         }
                     ],
