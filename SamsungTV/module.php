@@ -347,10 +347,9 @@ class SamsungTV extends IPSModuleStrict
         if ($on !== $this->ReadAttributeBoolean('TvOn')) {
             $this->SendDebug('Power', $on ? 'on' : 'off', 0);
             $this->WriteAttributeBoolean('TvOn', $on);
-            $this->ConfigureParent();
-        } elseif ($on && !$this->ParentIsActive()) {
-            // WebSocket-Client wurde von Hand abgeschaltet: wieder einschalten
-            $this->ConfigureParent();
+        }
+        if ($on) {
+            $this->SetBuffer('PowerKey', '');
         }
         $this->SetValueIfChanged('Power', $on);
 
@@ -362,7 +361,10 @@ class SamsungTV extends IPSModuleStrict
         $target = $this->ReadAttributeString('PowerTarget');
         if ($target !== '' && (($target === 'on') === $on || time() > $this->ReadAttributeInteger('PowerTargetUntil'))) {
             $this->WriteAttributeString('PowerTarget', '');
+            $this->SetBuffer('PowerKey', '');
         }
+        // WebSocket-Client passend schalten (ändert nur, wenn nötig; auch nach Abschalten von Hand)
+        $this->ConfigureParent();
         $this->ScheduleNext();
         $this->PushTile();
     }
@@ -377,12 +379,24 @@ class SamsungTV extends IPSModuleStrict
      */
     public function PowerOn(): bool
     {
+        if ($this->ReadAttributeBoolean('TvOn')) {
+            return true;
+        }
         $this->SetPowerTarget('on');
-        $ok = $this->WakeUp();
-        if (!$ok) {
+        // Immer Wake-on-LAN – für Fernseher, die im Standby nicht mehr im Netz antworten
+        $wol = $this->WakeUp();
+        // Neuere Modelle bleiben im Netzwerk-Standby erreichbar und reagieren dann zuverlässiger auf die
+        // Ein/Aus-Taste über den WebSocket als auf Wake-on-LAN. Gesendet wird sie, sobald die Verbindung steht.
+        $standby = $this->ReadAttributeBoolean('Reachable') && ($this->DeviceInfo()['powerState'] ?? '') === 'standby';
+        if ($standby) {
+            $this->SetBuffer('PowerKey', '1');
+            $this->ConfigureParent();
+            $this->SendDebug('PowerOn', 'network standby: connecting to send KEY_POWER', 0);
+        }
+        if (!$wol && !$standby) {
             $this->SendDebug('PowerOn', 'Wake-on-LAN failed: ' . $this->apiError, 0);
         }
-        return $ok;
+        return $wol || $standby;
     }
 
     /**
@@ -627,6 +641,12 @@ class SamsungTV extends IPSModuleStrict
                 }
                 $this->WriteAttributeInteger('Pairing', self::PAIR_OK);
                 $this->SetStatus(102);
+                // Einschalten aus dem Netzwerk-Standby: jetzt die Ein/Aus-Taste senden
+                if ($this->GetBuffer('PowerKey') === '1' && !$this->ReadAttributeBoolean('TvOn')) {
+                    $this->SetBuffer('PowerKey', '');
+                    $this->SendRemote('Click', 'KEY_POWER');
+                    $this->SendDebug('PowerOn', 'KEY_POWER sent after connect', 0);
+                }
                 if ($this->ReadAttributeString('InstalledApps') === '') {
                     $this->RequestInstalledApps();
                 }
@@ -838,7 +858,9 @@ class SamsungTV extends IPSModuleStrict
     private function ParentConfiguration(?bool $active = null): array
     {
         $host = $this->Host();
-        $active ??= $host !== '' && $this->ReadAttributeBoolean('TvOn') && $this->ReadAttributeInteger('Pairing') !== self::PAIR_DENIED;
+        // Verbunden, solange der Fernseher an ist – und kurz beim Einschalten aus dem Netzwerk-Standby
+        $waking = $this->ReadAttributeString('PowerTarget') === 'on' && $this->GetBuffer('PowerKey') === '1';
+        $active ??= $host !== '' && ($this->ReadAttributeBoolean('TvOn') || $waking) && $this->ReadAttributeInteger('Pairing') !== self::PAIR_DENIED;
         return [
             'URL'               => $host === '' ? '' : $this->SocketUrl($host),
             // Der Fernseher nutzt ein selbst ausgestelltes Zertifikat

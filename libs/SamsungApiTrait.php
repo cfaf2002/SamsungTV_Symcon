@@ -137,7 +137,9 @@ trait SamsungApiTrait
             $this->apiError = 'invalid MAC address';
             return false;
         }
-        $targets = array_unique(array_filter([$broadcast, $host], static fn (string $t): bool => filter_var($t, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false));
+        // Broadcast aus dem Formular, Broadcast des Netzes des Fernsehers (x.y.z.255) und direkt an den Fernseher
+        $subnet = filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false ? (string) preg_replace('/\.\d+$/', '.255', $host) : '';
+        $targets = array_unique(array_filter([$broadcast, $subnet, $host], static fn (string $t): bool => filter_var($t, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false));
         $sent = false;
         foreach ($targets as $target) {
             $context = stream_context_create(['socket' => ['so_broadcast' => true]]);

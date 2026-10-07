@@ -276,7 +276,16 @@ try {
     IPS_SetProperty($id, 'MAC', 'AA-BB-CC-DD-EE-FF');
     IPS_SetProperty($id, 'Broadcast', '127.255.255.255');
     IPS_ApplyChanges($id);
-    ok(SAMTV_PowerOn($id) === true, 'Einschalten per Wake-on-LAN');
+    ok(SAMTV_PowerOn($id) === true, 'Einschalten: Wake-on-LAN gesendet');
+    ok(IPS_GetProperty($parent, 'Active') === true, 'Netzwerk-Standby: WebSocket-Client zum Einschalten verbunden');
+    SAMTV_Update($id);
+    ok(IPS_GetProperty($parent, 'Active') === true, 'Abfrage im Standby trennt die Verbindung beim Einschalten nicht');
+    $count = count($GLOBALS['wscSent']);
+    push($parent, (string) json_encode(['event' => 'ms.channel.connect', 'data' => ['id' => 'x']]));
+    ok(count($GLOBALS['wscSent']) > $count && (lastSent()['params']['DataOfCmd'] ?? '') === 'KEY_POWER', 'Nach dem Verbinden die Ein/Aus-Taste gesendet');
+    $count = count($GLOBALS['wscSent']);
+    push($parent, (string) json_encode(['event' => 'ms.channel.connect', 'data' => ['id' => 'x']]));
+    ok(count($GLOBALS['wscSent']) === $count, 'Ein/Aus-Taste nur einmal (sonst ginge er wieder aus)');
     tv(['power' => 'on']);
     SAMTV_Update($id);
     ok(GetValue(IPS_GetObjectIDByIdent('Power', $id)) === true, 'Wieder an');
