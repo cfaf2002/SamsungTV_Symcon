@@ -122,6 +122,7 @@ class SamsungTV extends IPSModuleStrict
         $this->RegisterAttributeString('PowerTarget', '');
         $this->RegisterAttributeInteger('PowerTargetUntil', 0);
         $this->RegisterAttributeString('InstalledApps', '');
+        $this->RegisterAttributeString('AppMethod', '');
         $this->RegisterAttributeString('TileData', '{}');
 
         $this->RegisterTimer('Poll', 0, 'SAMTV_Poll($_IPS[\'TARGET\']);');
@@ -492,6 +493,11 @@ class SamsungTV extends IPSModuleStrict
         }
         $appID = $this->InstalledAppID($appID, '');
 
+        // Weg, der bei diesem Fernseher zuletzt funktioniert hat, zuerst (spart Wartezeit)
+        if ($this->ReadAttributeString('AppMethod') === 'rest' && $this->LaunchAppRestDirect($appID)) {
+            return true;
+        }
+
         // 1. Über SmartThings (zuverlässig bei neueren Modellen, die lokal keine Apps mehr starten)
         if ($this->LaunchAppSmartThings($appID)) {
             return true;
@@ -518,6 +524,7 @@ class SamsungTV extends IPSModuleStrict
                 $answer = $this->GetBuffer('LaunchAnswer');
                 $this->SetBuffer('LaunchAnswer', '');
                 if ($this->GetBuffer('PendingApp') === '' && $answer === '200') {
+                    $this->RememberAppMethod('websocket');
                     return true;
                 }
                 $this->SetBuffer('PendingApp', '');
@@ -526,10 +533,31 @@ class SamsungTV extends IPSModuleStrict
         }
 
         // 3. Über REST
+        $ok = $this->LaunchAppRestDirect($appID);
+        if ($ok) {
+            $this->RememberAppMethod('rest');
+        }
+        return $ok;
+    }
+
+    private function LaunchAppRestDirect(string $appID): bool
+    {
         $host = $this->Host();
         $ok = $host !== '' && $this->ReadAttributeBoolean('TvOn') && $this->LaunchAppRest($host, $appID);
         $this->SendDebug('App', 'launch ' . $appID . ' via REST: ' . ($ok ? 'OK' : $this->apiError), 0);
+        if (!$ok && $this->ReadAttributeString('AppMethod') === 'rest') {
+            // hat nicht mehr geklappt: beim nächsten Mal wieder alle Wege versuchen
+            $this->RememberAppMethod('');
+        }
         return $ok;
+    }
+
+    private function RememberAppMethod(string $method): void
+    {
+        if ($this->ReadAttributeString('AppMethod') !== $method) {
+            $this->WriteAttributeString('AppMethod', $method);
+            $this->SendDebug('App', 'method for this TV: ' . ($method !== '' ? $method : 'unknown'), 0);
+        }
     }
 
     /**
@@ -544,6 +572,9 @@ class SamsungTV extends IPSModuleStrict
         }
         $ok = (bool) @STH_SendCommand($instance, 'main', 'custom.launchapp', 'launchApp', (string) json_encode([$appID]));
         $this->SendDebug('App', 'launch ' . $appID . ' via SmartThings: ' . ($ok ? 'OK' : 'failed'), 0);
+        if ($ok) {
+            $this->RememberAppMethod('smartthings');
+        }
         return $ok;
     }
 

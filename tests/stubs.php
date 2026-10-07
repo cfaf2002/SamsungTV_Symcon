@@ -201,6 +201,13 @@ function lastSent(): ?array
     return json_decode((string) hex2bin($hex), true);
 }
 
+/** Gemerkten Weg für den App-Start vergessen (jeder Test prüft seinen Weg einzeln) */
+function forgetAppMethod(int $id): void
+{
+    $module = \IPS\InstanceManager::getInstanceInterface($id);
+    (new ReflectionMethod($module, 'WriteAttributeString'))->invoke($module, 'AppMethod', '');
+}
+
 function push(int $parent, string $text): void
 {
     \IPS\InstanceManager::getInstanceInterface($parent)->Push($text);
@@ -272,9 +279,11 @@ try {
     push($parent, $apps);
     ok(count(json_decode(SAMTV_GetInstalledApps($id), true)) === 2, 'Installierte Apps empfangen');
     ok(SAMTV_LaunchApp($id, '3201907018807') === true && lastSent()['params']['data']['action_type'] === 'DEEP_LINK', 'App starten (DEEP_LINK)');
+    forgetAppMethod($id);
     IPS_RequestAction($id, 'App', 5);
     ok(lastSent()['params']['data']['appId'] === 'org.tizen.browser' && lastSent()['params']['data']['action_type'] === 'NATIVE_LAUNCH', 'App aus der Variable (Browser, NATIVE_LAUNCH)');
     // Antwort des Fernsehers auf den App-Start
+    forgetAppMethod($id);
     tv(['launched' => '']);
     $GLOBALS['tvAppAnswer'] = 200;
     ok(SAMTV_LaunchApp($id, '3201907018807') === true && (tvState()['launched'] ?? '') === '', 'App gestartet (Antwort 200): kein zweiter Weg');
@@ -285,6 +294,13 @@ try {
     $started = microtime(true);
     ok(SAMTV_LaunchApp($id, '3201907018807') === true && (tvState()['launched'] ?? '') === '3201907018807', 'Keine Antwort (neuere Modelle): Start über REST');
     ok(microtime(true) - $started < 3, 'Wartet höchstens kurz auf die Antwort');
+    // gemerkter Weg: direkt REST, ohne Warten
+    tv(['launched' => '']);
+    $count = count($GLOBALS['wscSent']);
+    $started = microtime(true);
+    ok(SAMTV_LaunchApp($id, '3201907018807') === true && (tvState()['launched'] ?? '') === '3201907018807' && count($GLOBALS['wscSent']) === $count, 'Gemerkter Weg REST: direkt, ohne WebSocket');
+    ok(microtime(true) - $started < 1, 'Gemerkter Weg ohne Wartezeit');
+    forgetAppMethod($id);
     // App-Start über die SmartThings-Instanz
     $sth = IPS_CreateInstance('{0E3FCD01-8B22-4987-88AE-26B272A7EA7D}');
     IPS_SetProperty($id, 'SmartThingsInstance', $sth);
@@ -298,6 +314,7 @@ try {
     IPS_SetProperty($id, 'SmartThingsInstance', 0);
     IPS_ApplyChanges($id);
     // Favorit mit einer ID, die es auf diesem Fernseher nicht gibt
+    forgetAppMethod($id);
     IPS_SetProperty($id, 'Apps', json_encode([['Name' => 'Netflix', 'AppID' => '11101200001']]));
     IPS_ApplyChanges($id);
     IPS_RequestAction($id, 'App', 1);
