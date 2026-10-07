@@ -127,7 +127,7 @@ class SamsungTV extends IPSModuleStrict
         $this->RegisterAttributeString('TileIconsKey', '');
         $this->RegisterAttributeString('TileData', '{}');
 
-        $this->RegisterTimer('Poll', 0, 'SAMTV_Poll($_IPS[\'TARGET\']);');
+        $this->RegisterTimer('Poll', 0, 'IPS_RequestAction($_IPS[\'TARGET\'], \'Poll\', 0);');
     }
 
     /**
@@ -241,6 +241,10 @@ class SamsungTV extends IPSModuleStrict
             case 'Refresh':
                 $this->Update();
                 break;
+            case 'Poll':
+                // Timer
+                $this->Poll();
+                break;
             case 'LoadApps':
                 $this->LoadAppsIntoForm();
                 break;
@@ -339,10 +343,14 @@ class SamsungTV extends IPSModuleStrict
         return $this->ReadAttributeBoolean('Reachable');
     }
 
+    // ------------------------------------------------------------------
+    // Abfrage (Timer)
+    // ------------------------------------------------------------------
+
     /**
-     * Timer: Zustand abfragen. Läuft im eingestellten Takt, nach einem Schaltbefehl kurz alle 2 Sekunden.
+     * Zustand abfragen. Läuft im eingestellten Takt, nach einem Schaltbefehl kurz alle 2 Sekunden.
      */
-    public function Poll(): void
+    private function Poll(): void
     {
         $host = $this->Host();
         if ($host === '') {
@@ -1352,7 +1360,11 @@ class SamsungTV extends IPSModuleStrict
         $parts = [];
         foreach ($this->Apps() as $i => $app) {
             $media = $app['Icon'];
-            $updated = $media > 0 && IPS_MediaExists($media) ? (string) (IPS_GetMedia($media)['MediaUpdated'] ?? 0) . ':' . (string) (IPS_GetMedia($media)['MediaCRC'] ?? '') . ':' . (string) (IPS_GetMedia($media)['MediaSize'] ?? '') : '';
+            $updated = '';
+            if ($media > 0 && IPS_MediaExists($media)) {
+                $info = IPS_GetMedia($media);
+                $updated = (string) ($info['MediaUpdated'] ?? 0) . ':' . (string) ($info['MediaCRC'] ?? '') . ':' . (string) ($info['MediaSize'] ?? '');
+            }
             $parts[] = ($i + 1) . '=' . $media . '@' . $updated;
         }
         return md5(implode('|', $parts));

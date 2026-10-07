@@ -484,6 +484,8 @@ try {
     IPS_SetProperty($id, 'Host', '127.0.0.2');
     IPS_ApplyChanges($id);
     ok(GetValue(IPS_GetObjectIDByIdent('Power', $id)) === true, 'Ein Fehlversuch: bleibt an (WLAN-Aussetzer)');
+    IPS_RequestAction($id, 'Poll', 0);
+    ok(GetValue(IPS_GetObjectIDByIdent('Power', $id)) === false, 'Timer-Abfrage über RequestAction (keine öffentliche Funktion)');
     SAMTV_Update($id);
     ok(GetValue(IPS_GetObjectIDByIdent('Power', $id)) === false, 'Nicht erreichbar: aus');
     ok(attr($id, 'Token') === '', 'Neue Adresse: Kopplung zurückgesetzt');

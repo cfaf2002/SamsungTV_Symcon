@@ -64,8 +64,6 @@
         --dim: color-mix(in srgb, var(--fg) 14%, transparent);
         --r-key: 6px;
         --r-box: 10px;
-        /* neutraler Schatten (einzige feste Farbe, wie in den übrigen Kacheln) */
-        --shadow: color-mix(in srgb, #000 22%, transparent);
 
         box-sizing: border-box;
         width: 100%;
@@ -152,7 +150,7 @@
     #tile:not(.on) .meter i.lit { background: color-mix(in srgb, var(--fg) 30%, transparent); }
     #tile:not(.on) .level .val { color: var(--muted); }
     #tile.muted .level .val, #tile.muted .meter i.lit { color: var(--bad); background: color-mix(in srgb, var(--bad) 55%, transparent); }
-    .level button { width: 36px; height: 30px; min-height: 30px; }
+    .level button { width: 36px; height: 36px; }
 
     .notice { display: none; padding: 10px 12px; border-radius: var(--r-box); border: 1px solid color-mix(in srgb, var(--bad) 50%, transparent); background: color-mix(in srgb, var(--bad) 12%, transparent); }
     #tile.error .notice { display: block; }
@@ -204,7 +202,7 @@
     .dpad .ok {
         left: 32%; top: 32%; width: 36%; height: 36%;
         background: var(--key); font-weight: 700; letter-spacing: .02em;
-        box-shadow: 0 0 0 7px color-mix(in srgb, var(--fg) 4%, transparent), 0 2px 10px var(--shadow);
+        box-shadow: 0 0 0 7px color-mix(in srgb, var(--fg) 4%, transparent), inset 0 1px 0 color-mix(in srgb, var(--fg) 10%, transparent);
     }
     .dpad .ok:hover { background: var(--key-hover); }
     .rockers { display: flex; gap: 8px; }
@@ -229,7 +227,7 @@
 
     /* Größen (Höhe ohne Titelbereich): Display · + App-Tasten · + Tastenfeld · alles */
     @container (max-height: 180px) { .body { display: none; } }
-    @container (max-height: 300px) { .keys { display: none !important; } }
+    @container (max-height: 345px) { .keys { display: none !important; } }
     @container (max-height: 500px) { .media, .sources { display: none !important; } }
     @container (max-width: 340px) {
         .keys { gap: 8px; }

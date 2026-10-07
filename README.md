@@ -2,7 +2,7 @@
 
 [![IP-Symcon ab 8.1](https://img.shields.io/badge/IP--Symcon-ab_8.1-0b6fb3.svg)](https://www.symcon.de)
 [![Optimiert für Symcon 9.0](https://img.shields.io/badge/optimiert_f%C3%BCr-Symcon_9.0-0b6fb3.svg)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v81-v90-q1-2026/)
-[![Modul-Version 1.2 (Build 17)](https://img.shields.io/badge/Modul--Version-1.2_(Build_17)-informational.svg)](library.json)
+[![Modul-Version 1.2 (Build 18)](https://img.shields.io/badge/Modul--Version-1.2_(Build_18)-informational.svg)](library.json)
 [![Tests](https://github.com/cfaf2002/SamsungTV_Symcon/actions/workflows/tests.yml/badge.svg)](https://github.com/cfaf2002/SamsungTV_Symcon/actions/workflows/tests.yml)
 [![PHP 8.3 und 8.5](https://img.shields.io/badge/PHP-8.3_%7C_8.5-777bb4.svg?logo=php&logoColor=white)](https://www.php.net)
 [![SDK: IPSModuleStrict](https://img.shields.io/badge/SDK-IPSModuleStrict-success.svg)](https://www.symcon.de/de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/module/)
@@ -133,7 +133,7 @@ Die Quelle zeigt die zuletzt gewählte Quelle; der Fernseher meldet über die lo
 
 | Befehl | Beschreibung |
 | :-- | :-- |
-| `SAMTV_PowerOn(int $id): bool` | Einschalten (Wake-on-LAN) |
+| `SAMTV_PowerOn(int $id): bool` | Einschalten (Wake-on-LAN, im Netzwerk-Standby zusätzlich die Ein/Aus-Taste) |
 | `SAMTV_PowerOff(int $id): bool` | Ausschalten |
 | `SAMTV_SetPower(int $id, bool $on): bool` | Ein- oder ausschalten |
 | `SAMTV_SendKey(int $id, string $key): bool` | Taste senden, z. B. `KEY_HOME`, `KEY_VOLUP`, `KEY_HDMI2` (Präfix `KEY_` darf fehlen) |
@@ -162,11 +162,14 @@ SAMTV_SetVolume(12345, 18);
 
 ## 8. Sicherheit und Geschwindigkeit
 
-- Alles bleibt im Heimnetz; es gibt keine Cloud und keine Zugangsdaten. Der Fernseher bietet für Geräteinfo und Lautstärke nur HTTP an und nutzt für den WebSocket ein selbst ausgestelltes Zertifikat. Die Zertifikatsprüfung ist deshalb – nur für diese Verbindung – abgeschaltet.
+- Alles bleibt im Heimnetz; das Modul braucht keine Cloud und keine Zugangsdaten. Nur wer unter „Apps über SmartThings starten“ eine Instanz wählt, startet Apps über die SmartThings-Cloud (Anmeldung liegt dann im Modul SmartThings).
+- Der Fernseher bietet für Geräteinfo, App-Status und Lautstärke nur HTTP an und nutzt für den WebSocket ein selbst ausgestelltes Zertifikat. Die Zertifikatsprüfung ist deshalb – nur für diese Verbindung – abgeschaltet; Anfragen gehen ausschließlich an die eingetragene Adresse, ohne Weiterleitungen.
 - Der Token des Fernsehers liegt in einem Attribut und steht in der Adresse des WebSocket-Clients; ins Debug wird er nicht geschrieben.
-- Tasten, Quellen, App-IDs und Adressen werden vor dem Senden geprüft; die Kachel setzt alle Texte per `textContent`, Kacheldaten werden mit `JSON_HEX_*` eingebettet.
+- Tasten, Quellen, App-IDs und Adressen werden vor dem Senden geprüft; die Kachel setzt alle Texte per `textContent`, Kacheldaten werden mit `JSON_HEX_*` eingebettet. App-Icons werden am Inhalt als Bild erkannt und nur als `data:image/…` in `<img>` gezeigt.
 - Tasten gehen über die bestehende WebSocket-Verbindung ohne neuen Verbindungsaufbau. Abfragen haben kurze Zeitlimits (Verbindung 0,8 s), damit ein ausgeschalteter Fernseher Symcon nicht aufhält. Als „aus“ gilt der Fernseher erst nach zwei Fehlversuchen.
-- Variablen werden nur bei Änderung geschrieben, die Kachel nur bei geänderten Daten aktualisiert; die Animation beim Schalten ruht, solange die Kachel nicht sichtbar ist.
+- Die laufende App wird nur bei eingeschaltetem Fernseher abgefragt (eine kurze Anfrage je Favorit, Zeitlimit 1,5 s); antwortet der Fernseher dreimal nicht, bleibt die Abfrage aus.
+- Icons werden einmal verkleinert und zwischengespeichert und nur beim Öffnen der Kachel bzw. nach einer Änderung übertragen.
+- Variablen werden nur bei Änderung geschrieben, die Kachel nur bei geänderten Daten aktualisiert; das Blinken beim Schalten ruht, solange die Kachel nicht sichtbar ist.
 - Datenfluss zum WebSocket-Client HEX-kodiert, wie es IPSModuleStrict verlangt.
 
 ## 9. Entwicklung und Tests
@@ -177,12 +180,13 @@ git clone --depth 1 https://github.com/symcon/SymconStubs.git ../SymconStubs
 php tests/stubs.php ../SymconStubs
 ```
 
-`tests/stubs.php` startet einen nachgebauten Fernseher (`tests/fixtures/tv.php`, Ports 8001 und 9197) und einen nachgebauten WebSocket-Client und prüft Ein/Aus, Standby, Lautstärke, Kopplung mit Token, Ablehnung, Tasten, Apps, Kachel und den HEX-kodierten Datenfluss. Der Workflow führt alles mit PHP 8.3 und 8.5 aus.
+`tests/stubs.php` startet einen nachgebauten Fernseher (`tests/fixtures/tv.php`, Ports 8001 und 9197) und einen nachgebauten WebSocket-Client und prüft Ein/Aus (auch aus dem Netzwerk-Standby), Lautstärke, Kopplung mit Token, Ablehnung, Tasten, App-Start über WebSocket, REST und SmartThings, die laufende App, Icons (Erkennung, Verkleinerung, Rückfall), die Kachel und den HEX-kodierten Datenfluss. Der Workflow führt alles mit PHP 8.3 und 8.5 aus.
 
 ## 10. Changelog
 
 | Version | Build | Datum | Beschreibung |
 | :-- | --: | :-- | :-- |
+| 1.2 | 18 | 07.10.2026 | Hausstil-Prüfung: Timer ohne öffentliche Funktion (`SAMTV_Poll` entfällt), Stummtaste 36 px, Tastenfeld erst ab ausreichender Höhe, keine feste Schattenfarbe, README ergänzt |
 | 1.2 | 17 | 07.10.2026 | App-Icons: durchsichtiger Rand wird abgeschnitten, das Logo füllt die Taste |
 | 1.2 | 16 | 07.10.2026 | Größere App-Icons (56 px, auf schmalen Kacheln 47 px) |
 | 1.2 | 15 | 07.10.2026 | Steuerkreuz in der Symcon-App immer rund (Breite und Höhe fest gleich); kein doppeltes „TV“ im Display |
