@@ -43,7 +43,8 @@ trait SamsungApiTrait
         $device = is_array($json['device'] ?? null) ? $json['device'] : [];
         $bool = static fn (mixed $v): bool => $v === true || $v === 'true';
         return [
-            'name'       => (string) ($device['name'] ?? $json['name'] ?? ''),
+            // Der Fernseher schickt den Namen HTML-kodiert (z. B. 75&quot; Neo QLED)
+            'name'       => html_entity_decode((string) ($device['name'] ?? $json['name'] ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
             'model'      => (string) ($device['modelName'] ?? ''),
             'mac'        => (string) ($device['wifiMac'] ?? ''),
             'network'    => (string) ($device['networkType'] ?? ''),

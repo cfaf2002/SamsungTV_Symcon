@@ -209,6 +209,7 @@ try {
     ok(IPS_GetProperty($parent, 'VerifyCertificate') === false, 'Zertifikatsprüfung für das Gerätezertifikat aus');
     ok(IPS_GetProperty($parent, 'URL') === 'wss://127.0.0.1:8002/api/v2/channels/samsung.remote.control?name=U3ltY29u', 'URL verschlüsselt mit Name, ohne Token');
     ok(json_decode(SAMTV_GetDeviceInfo($id), true)['model'] === 'QE55Q80BAT', 'Geräteinfo gelesen');
+    ok(json_decode(SAMTV_GetDeviceInfo($id), true)['name'] === '75" Neo QLED', 'HTML-kodierter Name zurückgewandelt');
     ok(str_contains((string) json_encode(json_decode(IPS_GetConfigurationForm($id), true)), 'QE55Q80BAT'), 'Formular zeigt das gefundene Gerät');
 
     // Kopplung: Fernseher schickt den Token (in zwei Stücken, HEX-kodiert)

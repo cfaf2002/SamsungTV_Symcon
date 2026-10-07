@@ -25,7 +25,7 @@ if ($uri === '/api/v2/' && $method === 'GET') {
         'id'      => 'uuid:test',
         'name'    => '[TV] Samsung Q80B',
         'device'  => [
-            'name'             => '[TV] Wohnzimmer',
+            'name'             => '75&quot; Neo QLED',
             'modelName'        => 'QE55Q80BAT',
             'wifiMac'          => 'aa:bb:cc:dd:ee:ff',
             'networkType'      => 'wired',
