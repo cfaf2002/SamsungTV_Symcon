@@ -5,7 +5,7 @@
 
     Aufbau: oben frei für Titel und Symbole von Symcon · Statusleiste mit LEDs (Ein, Verbindung, App) und Ein/Aus ·
     Display (laufende App bzw. Quelle, Pegelanzeige der Lautstärke) · App-Tasten mit Icon oder Kürzel ·
-    Tastenfeld (Navigation, Kreuz mit OK, Programm, Stumm) · Medien- und Quellenleiste.
+    Tastenfeld (Navigation, rundes Steuerkreuz mit OK, Programmwippe), Stumm im Display · Medien- und Quellenleiste.
     Je nach Höhe: Display · + App-Tasten · + Tastenfeld · alles.
     Sicherheit: Alle Werte werden per textContent gesetzt, nie als HTML.
     Leistung:   Keine externen Dateien; Symbole als eingebettete SVG. App-Icons kommen nur beim Laden und bei
@@ -64,6 +64,8 @@
         --dim: color-mix(in srgb, var(--fg) 14%, transparent);
         --r-key: 6px;
         --r-box: 10px;
+        /* neutraler Schatten (einzige feste Farbe, wie in den übrigen Kacheln) */
+        --shadow: color-mix(in srgb, #000 22%, transparent);
 
         box-sizing: border-box;
         width: 100%;
@@ -169,18 +171,38 @@
     .mono-ico { width: 100%; height: 100%; display: grid; place-items: center; font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--fg);
         background: color-mix(in srgb, var(--m1) 28%, transparent); border: 1px solid color-mix(in srgb, var(--m1) 55%, transparent); border-radius: 6px; box-sizing: border-box; }
 
-    /* Tastenfeld: Navigation | Kreuz | Programm und Stumm */
-    .keys { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; }
-    .col { display: flex; flex-direction: column; gap: 6px; }
-    .col button { height: 40px; }
-    .col.r { align-items: stretch; }
-    .cross { display: grid; grid-template-columns: repeat(3, var(--c)); grid-template-rows: repeat(3, var(--c)); gap: 4px;
-        --c: clamp(40px, min(14cqw, calc((100cqh - 300px) / 3)), 58px); }
-    .cross button { width: var(--c); height: var(--c); }
-    .cross .up { grid-area: 1 / 2; } .cross .left { grid-area: 2 / 1; } .cross .ok { grid-area: 2 / 2; } .cross .right { grid-area: 2 / 3; } .cross .down { grid-area: 3 / 2; }
-    .cross .ok { font-family: var(--mono); font-weight: 700; border-color: var(--edge-strong); }
-    .cross .ok:active { border-color: var(--lit); }
-    .ch { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+    /* Tastenfeld: Navigation | rundes Steuerkreuz | Programmwippe */
+    .keys { flex: 1; min-height: 0; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; }
+    .nav { display: flex; flex-direction: column; gap: 10px; }
+    .nav button { width: 44px; height: 44px; border-radius: 14px; border: 0; }
+    .dpad {
+        justify-self: center;
+        position: relative;
+        width: min(210px, 52cqw, max(120px, calc(100cqh - 250px)));
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background:
+            radial-gradient(circle at 50% 50%, transparent 31%, var(--glass) 32%),
+            conic-gradient(from 225deg, color-mix(in srgb, var(--fg) 10%, transparent), transparent 25%, color-mix(in srgb, var(--fg) 10%, transparent) 50%, transparent 75%, color-mix(in srgb, var(--fg) 10%, transparent));
+        border: 1px solid var(--edge);
+        box-shadow: inset 0 1px 0 color-mix(in srgb, var(--fg) 8%, transparent);
+    }
+    .dpad button { position: absolute; background: transparent; border: 0; border-radius: 50%; }
+    .dpad button:hover { background: var(--key); }
+    .dpad .up    { top: 3%;    left: 34%; width: 32%; height: 28%; }
+    .dpad .down  { bottom: 3%; left: 34%; width: 32%; height: 28%; }
+    .dpad .left  { left: 3%;   top: 34%;  width: 28%; height: 32%; }
+    .dpad .right { right: 3%;  top: 34%;  width: 28%; height: 32%; }
+    .dpad .ok {
+        left: 32%; top: 32%; width: 36%; height: 36%;
+        background: var(--key); font-weight: 700; letter-spacing: .02em;
+        box-shadow: 0 0 0 7px color-mix(in srgb, var(--fg) 4%, transparent), 0 2px 10px var(--shadow);
+    }
+    .dpad .ok:hover { background: var(--key-hover); }
+    .rocker { display: flex; flex-direction: column; align-items: stretch; width: 44px; border-radius: var(--pill); background: var(--key); overflow: hidden; }
+    .rocker button { background: transparent; border: 0; border-radius: 0; height: 44px; }
+    .rocker button:hover { background: var(--key-hover); }
+    .rocker .label { text-align: center; font-size: 10px; font-weight: 600; letter-spacing: .06em; color: var(--muted); padding: 2px 0; }
     #tile.muted .mute { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 50%, transparent); }
 
     /* Segment-Leisten: Medien und Quellen */
@@ -201,10 +223,11 @@
     @container (max-height: 340px) { .keys { display: none !important; } }
     @container (max-height: 520px) { .media, .sources { display: none !important; } }
     @container (max-width: 330px) {
-        .keys { grid-template-columns: auto auto; }
-        .col.l { grid-column: 1 / -1; flex-direction: row; order: 3; }
-        .col.l button { flex: 1; }
+        .keys { grid-template-columns: 1fr auto; }
+        .nav { grid-column: 1 / -1; flex-direction: row; justify-content: center; order: 3; }
+        .dpad { width: min(170px, 60cqw); }
         .led span { display: none; }
+        #tile.upnp .level [data-vol] { display: none; }
     }
 </style>
 
@@ -250,6 +273,7 @@
             <span class="k" data-t="VOL">VOL</span>
             <div class="meter" id="meter" role="slider" aria-label="Volume" aria-valuemin="0" aria-valuemax="100"></div>
             <span class="val" id="volVal">–</span>
+            <button type="button" class="mute" id="mute" data-tip="Mute"><svg class="i"><use href="#i-mute"/></svg></button>
             <button type="button" data-vol="-1" data-repeat="1" data-tip="Volume −"><svg class="i"><use href="#i-minus"/></svg></button>
             <button type="button" data-vol="1" data-repeat="1" data-tip="Volume +"><svg class="i"><use href="#i-plus"/></svg></button>
         </div>
@@ -261,22 +285,22 @@
         <div class="apps" id="apps"></div>
 
         <div class="keys">
-            <div class="col l">
+            <div class="nav">
                 <button type="button" data-key="KEY_RETURN" data-tip="Back"><svg class="i"><use href="#i-back"/></svg></button>
                 <button type="button" data-key="KEY_HOME" data-tip="Home"><svg class="i"><use href="#i-home"/></svg></button>
                 <button type="button" data-key="KEY_MENU" data-tip="Menu"><svg class="i"><use href="#i-menu"/></svg></button>
             </div>
-            <div class="cross">
+            <div class="dpad">
                 <button type="button" class="up"    data-key="KEY_UP"    data-repeat="1" data-tip="Up"><svg class="i"><use href="#i-up"/></svg></button>
                 <button type="button" class="left"  data-key="KEY_LEFT"  data-repeat="1" data-tip="Left"><svg class="i"><use href="#i-left"/></svg></button>
                 <button type="button" class="ok"    data-key="KEY_ENTER" data-t="OK">OK</button>
                 <button type="button" class="right" data-key="KEY_RIGHT" data-repeat="1" data-tip="Right"><svg class="i"><use href="#i-right"/></svg></button>
                 <button type="button" class="down"  data-key="KEY_DOWN"  data-repeat="1" data-tip="Down"><svg class="i"><use href="#i-down"/></svg></button>
             </div>
-            <div class="col r">
-                <button type="button" data-key="KEY_CHUP" data-tip="Channel +"><svg class="i"><use href="#i-up"/></svg><span class="ch" data-t="CH">CH</span></button>
-                <button type="button" data-key="KEY_CHDOWN" data-tip="Channel −"><svg class="i"><use href="#i-down"/></svg><span class="ch" data-t="CH">CH</span></button>
-                <button type="button" class="mute" id="mute" data-tip="Mute"><svg class="i"><use href="#i-mute"/></svg></button>
+            <div class="rocker">
+                <button type="button" data-key="KEY_CHUP" data-tip="Channel +"><svg class="i"><use href="#i-up"/></svg></button>
+                <div class="label" data-t="CH">CH</div>
+                <button type="button" data-key="KEY_CHDOWN" data-tip="Channel −"><svg class="i"><use href="#i-down"/></svg></button>
             </div>
         </div>
 
