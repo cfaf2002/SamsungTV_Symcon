@@ -389,12 +389,57 @@
         }
 
         // Bild der App (Data-URI) oder Kürzel
+        // Durchsichtigen Rand um ein Icon abschneiden (App-Icons haben oft einen), damit es die Taste füllt.
+        // Läuft einmal je Bild im Hintergrund; danach werden die Tasten neu gezeichnet.
+        var trimmed = {};
+        function trimIcon(src) {
+            if (trimmed[src] !== undefined) return;
+            trimmed[src] = '';
+            var img = new Image();
+            img.onload = function () {
+                try {
+                    var w = img.naturalWidth, h = img.naturalHeight;
+                    if (!w || !h) return;
+                    var scale = Math.min(1, 256 / Math.max(w, h));
+                    var cw = Math.max(1, Math.round(w * scale)), ch = Math.max(1, Math.round(h * scale));
+                    var c = document.createElement('canvas');
+                    c.width = cw; c.height = ch;
+                    var g = c.getContext('2d');
+                    g.drawImage(img, 0, 0, cw, ch);
+                    var px = g.getImageData(0, 0, cw, ch).data;
+                    var x0 = cw, y0 = ch, x1 = -1, y1 = -1;
+                    for (var y = 0; y < ch; y++) {
+                        for (var x = 0; x < cw; x++) {
+                            if (px[(y * cw + x) * 4 + 3] > 24) {
+                                if (x < x0) x0 = x; if (x > x1) x1 = x;
+                                if (y < y0) y0 = y; if (y > y1) y1 = y;
+                            }
+                        }
+                    }
+                    if (x1 < 0) return;
+                    var bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+                    if (bw > cw * 0.94 && bh > ch * 0.94) return; // kein nennenswerter Rand
+                    var side = Math.max(bw, bh);
+                    var out = document.createElement('canvas');
+                    out.width = out.height = side;
+                    out.getContext('2d').drawImage(c, x0 - (side - bw) / 2, y0 - (side - bh) / 2, side, side, 0, 0, side, side);
+                    trimmed[src] = out.toDataURL('image/png');
+                    appsKey = '';
+                    render(last);
+                } catch (e) {
+                    // z. B. SVG ohne Größe: Original lassen
+                }
+            };
+            img.src = src;
+        }
+
         function appArt(app) {
             var src = icons[String(app.v)];
             if (src && /^data:image\/(png|jpeg|gif|webp|svg\+xml);base64,/.test(src)) {
+                trimIcon(src);
                 var img = el('img');
                 img.alt = '';
-                img.src = src;
+                img.src = trimmed[src] || src;
                 return img;
             }
             var words = String(app.label || '?').trim().split(/\s+/);
