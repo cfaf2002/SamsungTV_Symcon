@@ -5,7 +5,7 @@
 
     Aufbau: oben frei für Titel und Symbole von Symcon · Display mit LEDs (Ein, Verbindung, App), laufender App bzw. Quelle
     und Pegelanzeige der Lautstärke, daneben die hohe Ein/Aus-Taste · App-Tasten mit Icon oder Kürzel ·
-    Tastenfeld (Navigation, rundes Steuerkreuz mit OK, Programmwippe), Stumm im Display · Medien- und Quellenleiste.
+    Tastenfeld (Navigation, rundes Steuerkreuz mit OK, Wippen für Lautstärke und Programm), Stumm im Display · Medien- und Quellenleiste.
     Je nach Höhe: Display · + App-Tasten · + Tastenfeld · alles.
     Sicherheit: Alle Werte werden per textContent gesetzt, nie als HTML.
     Leistung:   Keine externen Dateien; Symbole als eingebettete SVG. App-Icons kommen nur beim Laden und bei
@@ -209,6 +209,7 @@
         box-shadow: 0 0 0 7px color-mix(in srgb, var(--fg) 4%, transparent), 0 2px 10px var(--shadow);
     }
     .dpad .ok:hover { background: var(--key-hover); }
+    .rockers { display: flex; gap: 8px; }
     .rocker { display: flex; flex-direction: column; align-items: stretch; width: 44px; border-radius: var(--pill); background: var(--key); overflow: hidden; }
     .rocker button { background: transparent; border: 0; border-radius: 0; height: 44px; }
     .rocker button:hover { background: var(--key-hover); }
@@ -239,7 +240,7 @@
         .rocker { width: 38px; }
         .rocker button { height: 40px; }
         .app { width: 52px; }
-        #tile.upnp .level [data-vol] { display: none; }
+        .rockers { gap: 6px; }
     }
 </style>
 
@@ -285,8 +286,6 @@
             <div class="meter" id="meter" role="slider" aria-label="Volume" aria-valuemin="0" aria-valuemax="100"></div>
             <span class="val" id="volVal">–</span>
             <button type="button" class="mute" id="mute" data-tip="Mute"><svg class="i"><use href="#i-mute"/></svg></button>
-            <button type="button" data-vol="-1" data-repeat="1" data-tip="Volume −"><svg class="i"><use href="#i-minus"/></svg></button>
-            <button type="button" data-vol="1" data-repeat="1" data-tip="Volume +"><svg class="i"><use href="#i-plus"/></svg></button>
         </div>
     </div>
     <button type="button" class="power" id="power" data-tip="Switch on / off"><svg class="i"><use href="#i-power"/></svg><span class="pl" data-t="POWER">POWER</span></button>
@@ -310,10 +309,17 @@
                 <button type="button" class="right" data-key="KEY_RIGHT" data-repeat="1" data-tip="Right"><svg class="i"><use href="#i-right"/></svg></button>
                 <button type="button" class="down"  data-key="KEY_DOWN"  data-repeat="1" data-tip="Down"><svg class="i"><use href="#i-down"/></svg></button>
             </div>
-            <div class="rocker">
-                <button type="button" data-key="KEY_CHUP" data-tip="Channel +"><svg class="i"><use href="#i-up"/></svg></button>
-                <div class="label" data-t="CH">CH</div>
-                <button type="button" data-key="KEY_CHDOWN" data-tip="Channel −"><svg class="i"><use href="#i-down"/></svg></button>
+            <div class="rockers">
+                <div class="rocker">
+                    <button type="button" data-vol="1" data-repeat="1" data-tip="Volume +"><svg class="i"><use href="#i-plus"/></svg></button>
+                    <div class="label" data-t="VOL">VOL</div>
+                    <button type="button" data-vol="-1" data-repeat="1" data-tip="Volume −"><svg class="i"><use href="#i-minus"/></svg></button>
+                </div>
+                <div class="rocker">
+                    <button type="button" data-key="KEY_CHUP" data-tip="Channel +"><svg class="i"><use href="#i-up"/></svg></button>
+                    <div class="label" data-t="CH">CH</div>
+                    <button type="button" data-key="KEY_CHDOWN" data-tip="Channel −"><svg class="i"><use href="#i-down"/></svg></button>
+                </div>
             </div>
         </div>
 
