@@ -2,7 +2,7 @@
 
 [![IP-Symcon ab 8.1](https://img.shields.io/badge/IP--Symcon-ab_8.1-0b6fb3.svg)](https://www.symcon.de)
 [![Optimiert für Symcon 9.0](https://img.shields.io/badge/optimiert_f%C3%BCr-Symcon_9.0-0b6fb3.svg)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v81-v90-q1-2026/)
-[![Modul-Version 1.2 (Build 15)](https://img.shields.io/badge/Modul--Version-1.2_(Build_15)-informational.svg)](library.json)
+[![Modul-Version 1.2 (Build 16)](https://img.shields.io/badge/Modul--Version-1.2_(Build_16)-informational.svg)](library.json)
 [![Tests](https://github.com/cfaf2002/SamsungTV_Symcon/actions/workflows/tests.yml/badge.svg)](https://github.com/cfaf2002/SamsungTV_Symcon/actions/workflows/tests.yml)
 [![PHP 8.3 und 8.5](https://img.shields.io/badge/PHP-8.3_%7C_8.5-777bb4.svg?logo=php&logoColor=white)](https://www.php.net)
 [![SDK: IPSModuleStrict](https://img.shields.io/badge/SDK-IPSModuleStrict-success.svg)](https://www.symcon.de/de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/module/)
@@ -183,6 +183,7 @@ php tests/stubs.php ../SymconStubs
 
 | Version | Build | Datum | Beschreibung |
 | :-- | --: | :-- | :-- |
+| 1.2 | 16 | 07.10.2026 | Größere App-Icons (56 px, auf schmalen Kacheln 47 px) |
 | 1.2 | 15 | 07.10.2026 | Steuerkreuz in der Symcon-App immer rund (Breite und Höhe fest gleich); kein doppeltes „TV“ im Display |
 | 1.2 | 14 | 07.10.2026 | Icons: lässt sich ein Bild nicht verkleinern (z. B. WebP mit Endung .png), wird das Original bis 1 MB verwendet statt keines |
 | 1.2 | 13 | 07.10.2026 | Lautstärke-Wippe neben der Programmwippe (statt − und + im Display) |
