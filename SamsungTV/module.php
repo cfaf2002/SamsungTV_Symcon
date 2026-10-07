@@ -291,12 +291,17 @@ class SamsungTV extends IPSModuleStrict
             $this->InjectProperty($form['elements'], 'IconInfo', 'visible', true);
         }
         $pairing = $this->ReadAttributeInteger('Pairing');
-        $this->InjectProperty($form['elements'], 'PairingLabel', 'caption', $this->Translate(match ($pairing) {
+        $caption = $this->Translate(match ($pairing) {
             self::PAIR_OK      => 'Paired – Symcon is allowed on the TV.',
             self::PAIR_DENIED  => 'Access was denied on the TV. Allow “Symcon” on the TV under Settings → General → External Device Manager → Device Connection Manager → Device List, then use “Pair again”.',
             self::PAIR_WAITING => 'Waiting for confirmation – please allow “Symcon” on the TV.',
             default            => 'Not paired yet. When the TV is on, it asks once whether Symcon may control it.',
-        }));
+        });
+        // Im Standby ist der WebSocket Client absichtlich getrennt – Symcon zeigt dann oben einen Hinweis
+        if ($this->Host() !== '' && $this->ParentID() === 0) {
+            $caption .= ' ' . $this->Translate('The TV is off, so the connection to the WebSocket client is disconnected on purpose. The notice about the missing parent instance disappears when the TV is switched on.');
+        }
+        $this->InjectProperty($form['elements'], 'PairingLabel', 'caption', $caption);
         return (string) json_encode($form);
     }
 
