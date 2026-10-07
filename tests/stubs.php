@@ -211,6 +211,20 @@ function tvState(): array
     return json_decode((string) file_get_contents($stateFile), true);
 }
 
+// Instanz samt Variablen und Medien löschen, wie Symcon es beim Löschen im Objektbaum tut
+function deleteInstance(int $id): void
+{
+    foreach (IPS_GetChildrenIDs($id) as $child) {
+        match (IPS_GetObject($child)['ObjectType']) {
+            2 => IPS_DeleteVariable($child),
+            3 => IPS_DeleteScript($child, true),
+            5 => IPS_DeleteMedia($child, true),
+            default => IPS_DeleteInstance($child),
+        };
+    }
+    IPS_DeleteInstance($id);
+}
+
 function attr(int $id, string $name): mixed
 {
     $module = \IPS\InstanceManager::getInstanceInterface($id);
@@ -515,6 +529,30 @@ try {
     IPS_SetProperty($id, 'ShowRemote', false);
     IPS_ApplyChanges($id);
     ok(@IPS_GetObjectIDByIdent('Volume', $id) === false && @IPS_GetObjectIDByIdent('Remote', $id) === false, 'Abgeschaltete Variablen entfernt');
+
+    // Löschen der Instanz: eigenen WebSocket Client mit entfernen (erkannt am Ident, nicht an Attributen)
+    $wsc = '{D68FD31F-0E90-7019-F16C-1949BD3079EF}';
+    ok(IPS_GetObject($socket)['ObjectIdent'] === 'SAMTV_SOCKET_' . $other && IPS_GetObject($parent)['ObjectIdent'] === 'SAMTV_SOCKET_' . $id, 'WebSocket Client als eigener gekennzeichnet');
+    $module = \IPS\InstanceManager::getInstanceInterface($other);
+    $module->Destroy();
+    ok(IPS_InstanceExists($socket), 'Destroy beim Modul-Update (Instanz existiert noch): WebSocket Client bleibt');
+    deleteInstance($other);
+    $module->Destroy();
+    ok(!IPS_InstanceExists($socket), 'Instanz gelöscht: eigener WebSocket Client entfernt');
+    $third = IPS_CreateInstance('{0D4C6AE0-8BE5-420E-92C6-9ACD54D1B01D}');
+    IPS_ApplyChanges($third);
+    $thirdSocket = (int) attr($third, 'Socket');
+    $foreign = IPS_CreateInstance('{0D4C6AE0-8BE5-420E-92C6-9ACD54D1B01D}');
+    IPS_ConnectInstance($foreign, $thirdSocket);
+    $userSocket = IPS_CreateInstance($wsc);
+    $module = \IPS\InstanceManager::getInstanceInterface($third);
+    deleteInstance($third);
+    $module->Destroy();
+    ok(IPS_InstanceExists($thirdSocket), 'Hängt eine andere Instanz daran: WebSocket Client bleibt');
+    IPS_DisconnectInstance($foreign);
+    IPS_ApplyChanges($id);
+    ok(!IPS_InstanceExists($thirdSocket), 'Verwaister eigener WebSocket Client beim Übernehmen nachträglich entfernt');
+    ok(IPS_InstanceExists($userSocket) && IPS_InstanceExists($parent), 'Fremde und benutzte WebSocket Clients bleiben unberührt');
 
     // Alle öffentlichen Funktionen mit Typen
     $missing = [];

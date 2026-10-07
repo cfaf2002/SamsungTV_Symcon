@@ -2,7 +2,7 @@
 
 [![IP-Symcon ab 8.1](https://img.shields.io/badge/IP--Symcon-ab_8.1-0b6fb3.svg)](https://www.symcon.de)
 [![Optimiert für Symcon 9.0](https://img.shields.io/badge/optimiert_f%C3%BCr-Symcon_9.0-0b6fb3.svg)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v81-v90-q1-2026/)
-[![Modul-Version 1.3 (Build 22)](https://img.shields.io/badge/Modul--Version-1.3_(Build_22)-informational.svg)](library.json)
+[![Modul-Version 1.4 (Build 23)](https://img.shields.io/badge/Modul--Version-1.4_(Build_23)-informational.svg)](library.json)
 [![Tests](https://github.com/cfaf2002/SamsungTV_Symcon/actions/workflows/tests.yml/badge.svg)](https://github.com/cfaf2002/SamsungTV_Symcon/actions/workflows/tests.yml)
 [![PHP 8.3 und 8.5](https://img.shields.io/badge/PHP-8.3_%7C_8.5-777bb4.svg?logo=php&logoColor=white)](https://www.php.net)
 [![SDK: IPSModuleStrict](https://img.shields.io/badge/SDK-IPSModuleStrict-success.svg)](https://www.symcon.de/de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/module/)
@@ -63,7 +63,7 @@ Autor: Armin Frohwerk · Lizenz: MIT
 | UPnP RenderingControl | 9197 (http) | Lautstärke und Stumm |
 | Wake-on-LAN | UDP 9 | Einschalten |
 
-Die WebSocket-Verbindung hält ein Symcon-**WebSocket Client** als übergeordnete Instanz. Das Modul legt ihn selbst an (Name „… (WebSocket)“ unter den I/O-Instanzen), trägt die Adresse ein und verbindet ihn nur, solange der Fernseher an ist. Ist der Fernseher aus, wird der WebSocket Client abgeschaltet und von der Instanz getrennt – so gibt es weder Fehlermeldungen im Log noch ein Warnsymbol im Objektbaum. In der Instanzkonfiguration zeigt Symcon währenddessen oben den Hinweis „Die Instanz benötigt eine übergeordnete Instanz“ – das ist gewollt, **kein Fehler**, und verschwindet beim Einschalten; „Gateway ändern“ ist dafür nicht nötig. Das Modul blendet dazu ganz oben im Formular einen eigenen Hinweis „Achtung – kein Fehler“ ein. Wird die Instanz gelöscht, entfernt sie ihren WebSocket Client mit (sofern keine andere Instanz daran hängt).
+Die WebSocket-Verbindung hält ein Symcon-**WebSocket Client** als übergeordnete Instanz. Das Modul legt ihn selbst an (Name „… (WebSocket)“ unter den I/O-Instanzen), trägt die Adresse ein und verbindet ihn nur, solange der Fernseher an ist. Ist der Fernseher aus, wird der WebSocket Client abgeschaltet und von der Instanz getrennt – so gibt es weder Fehlermeldungen im Log noch ein Warnsymbol im Objektbaum. In der Instanzkonfiguration zeigt Symcon währenddessen oben den Hinweis „Die Instanz benötigt eine übergeordnete Instanz“ – das ist gewollt, **kein Fehler**, und verschwindet beim Einschalten; „Gateway ändern“ ist dafür nicht nötig. Das Modul blendet dazu ganz oben im Formular einen eigenen Hinweis „Achtung – kein Fehler“ ein. Wird die Instanz gelöscht, entfernt sie ihren WebSocket Client mit (sofern keine andere Instanz daran hängt). Erkannt wird er an seinem Ident `SAMTV_SOCKET_<Instanz-ID>`, den das Modul beim Anlegen bzw. Übernehmen setzt; fremde WebSocket Clients bleiben unberührt. Greift das Aufräumen beim Löschen nicht, holt es die nächste Samsung-TV-Instanz beim Übernehmen oder Systemstart nach – im ungünstigsten Fall bleibt der Client wie bisher stehen und lässt sich von Hand löschen.
 
 Die SmartThings-Cloud wird bewusst nicht genutzt: Sie liefert zwar die aktive Quelle, verlangt aber Zugangsdaten, die Samsung inzwischen nur noch 24 Stunden gültig ausstellt.
 
@@ -186,6 +186,7 @@ php tests/stubs.php ../SymconStubs
 
 | Version | Build | Datum | Beschreibung |
 | :-- | --: | :-- | :-- |
+| 1.4 | 23 | 07.10.2026 | Löschen der Instanz entfernt den eigenen WebSocket Client zuverlässig: erkannt am Ident statt an Attributen der gelöschten Instanz; verwaiste eigene Clients räumt das Modul beim Übernehmen und Systemstart nach |
 | 1.3 | 22 | 07.10.2026 | Empfangspuffer blockiert nicht mehr nach einem unvollständigen Stück und wird beim Trennen geleert (Kopplung und App-Starts gehen nicht mehr verloren); „Apps vom Fernseher laden“ verliert keine schnelle Antwort mehr; laufende App auch bei abweichender App-ID des Fernsehers erkannt; Ein-/Ausschalten fragt bei veraltetem Zustand kurz nach statt still abzubrechen; `SetMute` ohne UPnP schaltet nicht mehr versehentlich um; Löschen der Instanz entfernt den eigenen WebSocket Client; Schnelltakt nach Schaltbefehl nur noch mit Ein/Aus-Abfrage; Kachel zeigt nach fehlgeschlagener Lautstärkeänderung wieder den echten Wert; Pegelanzeige mit 36 px Klickfläche |
 | 1.2 | 21 | 07.10.2026 | Hinweis „Achtung – kein Fehler“ ganz oben im Formular, solange der Fernseher aus ist (aktualisiert sich auch bei offenem Formular) |
 | 1.2 | 20 | 07.10.2026 | Formular erklärt im Standby den Symcon-Hinweis zur fehlenden übergeordneten Instanz |

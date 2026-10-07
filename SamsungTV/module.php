@@ -31,6 +31,8 @@ class SamsungTV extends IPSModuleStrict
     // Symcon-I/O „WebSocket Client“ und Datenfluss vom Typ „Simple“
     private const WSC_GUID = '{D68FD31F-0E90-7019-F16C-1949BD3079EF}';
     private const TX_GUID = '{79827379-F36E-4ADA-8A95-5F8D1DC92FA9}';
+    // Kennung des eigenen WebSocket Clients (Ident + Instanz-ID), damit Destroy() ihn ohne Attribute findet
+    private const SOCKET_IDENT = 'SAMTV_SOCKET_';
 
     // Name, unter dem Symcon am Fernseher erscheint (Geräteverwaltung)
     private const CLIENT_NAME = 'Symcon';
@@ -133,16 +135,10 @@ class SamsungTV extends IPSModuleStrict
 
     public function Destroy(): void
     {
-        // Instanz wird gelöscht (nicht nur beim Beenden oder Modul-Update entladen): eigenen WebSocket Client mit entfernen
+        // Instanz wird gelöscht (beim Modul-Update existiert sie noch): eigenen WebSocket Client mit entfernen.
+        // Attribute der gelöschten Instanz werden dazu nicht gelesen – der Client trägt ihre ID im Ident.
         if (!IPS_InstanceExists($this->InstanceID) && IPS_GetKernelRunlevel() === KR_READY) {
-            try {
-                $socket = $this->ReadAttributeInteger('Socket');
-                if ($this->IsSocket($socket) && !$this->SocketInUse($socket)) {
-                    IPS_DeleteInstance($socket);
-                }
-            } catch (Throwable $e) {
-                // Aufräumen ist nur eine Hilfe; der WebSocket Client lässt sich auch von Hand löschen
-            }
+            $this->DeleteOrphanSockets();
         }
         parent::Destroy();
     }
@@ -199,6 +195,7 @@ class SamsungTV extends IPSModuleStrict
         $this->ScheduleNext();
 
         if (IPS_GetKernelRunlevel() === KR_READY) {
+            $this->DeleteOrphanSockets();
             $this->Poll();
         } else {
             $this->PushTile();
@@ -209,6 +206,7 @@ class SamsungTV extends IPSModuleStrict
     {
         switch ($Message) {
             case IPS_KERNELSTARTED:
+                $this->DeleteOrphanSockets();
                 if ($this->Host() !== '') {
                     $this->Poll();
                 }
@@ -1220,10 +1218,12 @@ class SamsungTV extends IPSModuleStrict
             if ($this->ReadAttributeInteger('Socket') !== $parent) {
                 $this->WriteAttributeInteger('Socket', $parent);
             }
+            $this->MarkSocket($parent);
             return $parent;
         }
         $socket = $this->ReadAttributeInteger('Socket');
         if ($this->IsSocket($socket)) {
+            $this->MarkSocket($socket);
             return $socket;
         }
         if (IPS_GetKernelRunlevel() !== KR_READY) {
@@ -1231,6 +1231,7 @@ class SamsungTV extends IPSModuleStrict
         }
         $socket = IPS_CreateInstance(self::WSC_GUID);
         IPS_SetName($socket, IPS_GetName($this->InstanceID) . ' (WebSocket)');
+        $this->MarkSocket($socket);
         $this->WriteAttributeInteger('Socket', $socket);
         $this->SendDebug('Parent', 'WebSocket Client ' . $socket . ' created', 0);
         return $socket;
@@ -1242,12 +1243,50 @@ class SamsungTV extends IPSModuleStrict
     }
 
     /**
-     * Hängt eine andere Instanz an diesem WebSocket Client?
+     * Kennzeichnet den WebSocket Client als eigenen (Ident mit der Instanz-ID) – nur, wenn er noch keinen Ident hat.
+     */
+    private function MarkSocket(int $socket): void
+    {
+        $ident = self::SOCKET_IDENT . $this->InstanceID;
+        try {
+            if (IPS_GetObject($socket)['ObjectIdent'] === '' && @IPS_GetObjectIDByIdent($ident, IPS_GetParent($socket)) === false) {
+                IPS_SetIdent($socket, $ident);
+            }
+        } catch (Throwable $e) {
+            $this->SendDebug('Parent', 'Ident: ' . $e->getMessage(), 0);
+        }
+    }
+
+    /**
+     * Löscht gekennzeichnete WebSocket Clients, deren Instanz es nicht mehr gibt und an denen nichts hängt.
+     * Läuft in Destroy() und – falls das Löschen dort nicht greift – beim Übernehmen und Systemstart.
+     * Im Zweifel bleibt der Client stehen (wie bisher); er lässt sich auch von Hand löschen.
+     */
+    private function DeleteOrphanSockets(): void
+    {
+        try {
+            foreach (IPS_GetInstanceListByModuleID(self::WSC_GUID) as $socket) {
+                $ident = (string) (IPS_GetObject($socket)['ObjectIdent'] ?? '');
+                if (!str_starts_with($ident, self::SOCKET_IDENT)) {
+                    continue;
+                }
+                $owner = (int) substr($ident, strlen(self::SOCKET_IDENT));
+                if ($owner > 0 && !IPS_InstanceExists($owner) && !$this->SocketInUse($socket)) {
+                    IPS_DeleteInstance($socket);
+                }
+            }
+        } catch (Throwable $e) {
+            // Aufräumen ist nur eine Hilfe
+        }
+    }
+
+    /**
+     * Hängt irgendeine Instanz an diesem WebSocket Client?
      */
     private function SocketInUse(int $socket): bool
     {
         foreach (IPS_GetInstanceList() as $id) {
-            if ($id !== $this->InstanceID && (IPS_GetInstance($id)['ConnectionID'] ?? 0) === $socket) {
+            if ((IPS_GetInstance($id)['ConnectionID'] ?? 0) === $socket) {
                 return true;
             }
         }
