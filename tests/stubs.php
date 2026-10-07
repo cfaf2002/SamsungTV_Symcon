@@ -260,12 +260,21 @@ try {
     $id = IPS_CreateInstance('{0D4C6AE0-8BE5-420E-92C6-9ACD54D1B01D}');
     ok($id > 0, 'Instanz angelegt');
     $compatible = json_decode(\IPS\InstanceManager::getInstanceInterface($id)->GetCompatibleParents(), true);
-    ok(($compatible['type'] ?? '') === 'require' && ($compatible['moduleIDs'] ?? []) === ['{D68FD31F-0E90-7019-F16C-1949BD3079EF}'], 'Verlangt einen WebSocket Client als übergeordnete Instanz');
-    // Symcon legt den WebSocket Client beim Anlegen an (die Stubs nicht): hier von Hand
+    ok(($compatible['type'] ?? '') === 'connect' && ($compatible['moduleIDs'] ?? []) === ['{D68FD31F-0E90-7019-F16C-1949BD3079EF}'], 'Passt zu einem WebSocket Client als übergeordnete Instanz');
+    // Ein schon verbundener WebSocket Client (Instanz aus älterer Version) wird übernommen
     $parent = IPS_CreateInstance('{D68FD31F-0E90-7019-F16C-1949BD3079EF}');
     IPS_ConnectInstance($id, $parent);
     IPS_ApplyChanges($parent);
     IPS_ApplyChanges($id);
+    ok(attr($id, 'Socket') === $parent, 'Verbundenen WebSocket Client übernommen');
+    ok(IPS_GetInstance($id)['ConnectionID'] === 0, 'Ohne Adresse getrennt (kein Fehler im Objektbaum)');
+    // Fehlt er, legt das Modul selbst einen an
+    $other = IPS_CreateInstance('{0D4C6AE0-8BE5-420E-92C6-9ACD54D1B01D}');
+    IPS_ApplyChanges($other);
+    $socket = (int) attr($other, 'Socket');
+    ok($socket > 0 && $socket !== $parent && IPS_GetInstance($socket)['ModuleInfo']['ModuleID'] === '{D68FD31F-0E90-7019-F16C-1949BD3079EF}', 'Eigenen WebSocket Client angelegt');
+    IPS_ApplyChanges($other);
+    ok((int) attr($other, 'Socket') === $socket, 'Kein zweiter WebSocket Client bei erneutem Übernehmen');
     ok(IPS_GetInstance($id)['InstanceStatus'] === 104, 'Ohne Adresse Status 104');
     $form = json_decode(IPS_GetConfigurationForm($id), true);
     ok(is_array($form) && isset($form['elements']), 'Formular ist gültiges JSON');
@@ -282,7 +291,7 @@ try {
     }
     ok(GetValue(IPS_GetObjectIDByIdent('Power', $id)) === true, 'Fernseher an erkannt');
     ok(GetValue(IPS_GetObjectIDByIdent('Volume', $id)) === 17, 'Lautstärke über UPnP gelesen');
-    ok(IPS_GetProperty($parent, 'Active') === true, 'WebSocket-Client aktiv geschaltet');
+    ok(IPS_GetProperty($parent, 'Active') === true && IPS_GetInstance($id)['ConnectionID'] === $parent, 'WebSocket-Client aktiv geschaltet und verbunden');
     ok(IPS_GetProperty($parent, 'VerifyCertificate') === false, 'Zertifikatsprüfung für das Gerätezertifikat aus');
     ok(IPS_GetProperty($parent, 'URL') === 'wss://127.0.0.1:8002/api/v2/channels/samsung.remote.control?name=U3ltY29u', 'URL verschlüsselt mit Name, ohne Token');
     ok(json_decode(SAMTV_GetDeviceInfo($id), true)['model'] === 'QE55Q80BAT', 'Geräteinfo gelesen');
@@ -440,12 +449,13 @@ try {
     SAMTV_Update($id);
     ok(GetValue(IPS_GetObjectIDByIdent('Power', $id)) === false && attr($id, 'PowerTarget') === '', 'Standby erkannt, Schaltziel erreicht');
     ok(IPS_GetProperty($parent, 'Active') === false, 'WebSocket-Client im Standby aus');
+    ok(IPS_GetInstance($id)['ConnectionID'] === 0 && attr($id, 'Socket') === $parent, 'Im Standby getrennt, WebSocket Client gemerkt');
     ok(SAMTV_SendKey($id, 'KEY_HOME') === false, 'Im Standby keine Tasten');
     IPS_SetProperty($id, 'MAC', 'AA-BB-CC-DD-EE-FF');
     IPS_SetProperty($id, 'Broadcast', '127.255.255.255');
     IPS_ApplyChanges($id);
     ok(SAMTV_PowerOn($id) === true, 'Einschalten: Wake-on-LAN gesendet');
-    ok(IPS_GetProperty($parent, 'Active') === true, 'Netzwerk-Standby: WebSocket-Client zum Einschalten verbunden');
+    ok(IPS_GetProperty($parent, 'Active') === true && IPS_GetInstance($id)['ConnectionID'] === $parent, 'Netzwerk-Standby: WebSocket-Client zum Einschalten verbunden');
     SAMTV_Update($id);
     ok(IPS_GetProperty($parent, 'Active') === true, 'Abfrage im Standby trennt die Verbindung beim Einschalten nicht');
     $count = count($GLOBALS['wscSent']);

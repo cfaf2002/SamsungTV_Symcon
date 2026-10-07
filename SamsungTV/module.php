@@ -126,17 +126,19 @@ class SamsungTV extends IPSModuleStrict
         $this->RegisterAttributeInteger('AppStatusFailures', 0);
         $this->RegisterAttributeString('TileIconsKey', '');
         $this->RegisterAttributeString('TileData', '{}');
+        $this->RegisterAttributeInteger('Socket', 0);
 
         $this->RegisterTimer('Poll', 0, 'IPS_RequestAction($_IPS[\'TARGET\'], \'Poll\', 0);');
     }
 
     /**
-     * Übergeordnete Instanz: ein eigener WebSocket Client (legt Symcon beim Anlegen mit an)
+     * Übergeordnete Instanz: ein eigener WebSocket Client. Das Modul legt ihn selbst an und verbindet ihn nur,
+     * solange der Fernseher an ist – so meldet Symcon im Standby keine inaktive übergeordnete Instanz.
      */
     public function GetCompatibleParents(): string
     {
         return (string) json_encode([
-            'type'      => 'require',
+            'type'      => 'connect',
             'moduleIDs' => [self::WSC_GUID],
         ]);
     }
@@ -1061,18 +1063,20 @@ class SamsungTV extends IPSModuleStrict
 
     /**
      * Setzt Adresse und Aktiv-Schalter des WebSocket-Clients – nur, wenn sich etwas ändert.
+     * Aktiv: verbunden. Inaktiv (Fernseher aus): getrennt, damit der Objektbaum keinen Fehler zeigt.
      */
     private function ConfigureParent(?bool $active = null): void
     {
-        $parent = $this->ParentID();
-        if ($parent === 0 || IPS_GetInstance($parent)['ModuleInfo']['ModuleID'] !== self::WSC_GUID) {
+        $socket = $this->Socket();
+        if ($socket === 0) {
             return;
         }
+        $config = $this->ParentConfiguration($active);
         $changed = false;
-        foreach ($this->ParentConfiguration($active) as $name => $value) {
+        foreach ($config as $name => $value) {
             try {
-                if (IPS_GetProperty($parent, $name) !== $value) {
-                    IPS_SetProperty($parent, $name, $value);
+                if (IPS_GetProperty($socket, $name) !== $value) {
+                    IPS_SetProperty($socket, $name, $value);
                     $changed = true;
                 }
             } catch (Throwable $e) {
@@ -1080,8 +1084,51 @@ class SamsungTV extends IPSModuleStrict
             }
         }
         if ($changed) {
-            IPS_ApplyChanges($parent);
+            IPS_ApplyChanges($socket);
         }
+        $connected = $this->ParentID() === $socket;
+        if ($config['Active'] && !$connected) {
+            IPS_ConnectInstance($this->InstanceID, $socket);
+            $this->WatchParent();
+        } elseif (!$config['Active'] && $connected) {
+            IPS_DisconnectInstance($this->InstanceID);
+            $this->WatchParent();
+        }
+    }
+
+    /**
+     * Der eigene WebSocket Client: der verbundene, sonst der gemerkte, sonst ein neu angelegter.
+     */
+    private function Socket(): int
+    {
+        $parent = $this->ParentID();
+        if ($parent > 0) {
+            if (!$this->IsSocket($parent)) {
+                // Von Hand mit etwas anderem verbunden: nicht anfassen
+                return 0;
+            }
+            if ($this->ReadAttributeInteger('Socket') !== $parent) {
+                $this->WriteAttributeInteger('Socket', $parent);
+            }
+            return $parent;
+        }
+        $socket = $this->ReadAttributeInteger('Socket');
+        if ($this->IsSocket($socket)) {
+            return $socket;
+        }
+        if (IPS_GetKernelRunlevel() !== KR_READY) {
+            return 0;
+        }
+        $socket = IPS_CreateInstance(self::WSC_GUID);
+        IPS_SetName($socket, IPS_GetName($this->InstanceID) . ' (WebSocket)');
+        $this->WriteAttributeInteger('Socket', $socket);
+        $this->SendDebug('Parent', 'WebSocket Client ' . $socket . ' created', 0);
+        return $socket;
+    }
+
+    private function IsSocket(int $id): bool
+    {
+        return $id > 0 && IPS_InstanceExists($id) && IPS_GetInstance($id)['ModuleInfo']['ModuleID'] === self::WSC_GUID;
     }
 
     private function SocketUrl(string $host): string
