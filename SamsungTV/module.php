@@ -1297,19 +1297,23 @@ class SamsungTV extends IPSModuleStrict
             $types = [IMAGETYPE_PNG => 'image/png', IMAGETYPE_JPEG => 'image/jpeg', IMAGETYPE_GIF => 'image/gif', IMAGETYPE_WEBP => 'image/webp'];
             if ($size === false || !isset($types[$size[2]])) {
                 $note = 'not an image (PNG, JPG, GIF, WebP or SVG)';
-            } elseif (($size[0] > 192 || $size[1] > 192 || strlen($raw) > 60000) && function_exists('imagecreatefromstring')) {
-                $small = $this->ScaleIcon($raw, 128);
+            } else {
+                $kind = strtoupper(substr($types[$size[2]], 6));
+                $small = '';
+                if (($size[0] > 192 || $size[1] > 192 || strlen($raw) > 60000) && function_exists('imagecreatefromstring')) {
+                    $small = $this->ScaleIcon($raw, 128);
+                }
                 if ($small !== '') {
                     $uri = 'data:image/png;base64,' . base64_encode($small);
-                    $note = $size[0] . '×' . $size[1] . ' → 128×128';
+                    $note = $kind . ' ' . $size[0] . '×' . $size[1] . ' → 128×128';
+                } elseif (strlen($raw) <= 1000000) {
+                    // Verkleinern nicht möglich (z. B. WebP ohne Unterstützung in PHP): Original nehmen –
+                    // die Visualisierung zeigt es trotzdem an
+                    $uri = 'data:' . $types[$size[2]] . ';base64,' . base64_encode($raw);
+                    $note = $kind . ' ' . $size[0] . '×' . $size[1] . ($size[0] > 192 || $size[1] > 192 ? ' (' . $this->Translate('original size') . ')' : '');
                 } else {
-                    $note = 'image could not be scaled';
+                    $note = $kind . ' ' . $size[0] . '×' . $size[1] . ': ' . $this->Translate('larger than 1 MB – please use a smaller image');
                 }
-            } elseif (strlen($raw) > 300000) {
-                $note = 'image larger than 300 KB';
-            } else {
-                $uri = 'data:' . $types[$size[2]] . ';base64,' . base64_encode($raw);
-                $note = $size[0] . '×' . $size[1];
             }
         }
         $cache[$media] = ['crc' => $crc, 'uri' => $uri, 'note' => $note];

@@ -421,6 +421,11 @@ try {
     $small = str_starts_with($uri, 'data:image/png;base64,') ? @getimagesizefromstring((string) base64_decode(substr($uri, 22))) : false;
     ok($small !== false && $small[0] === 128 && $small[1] === 128, 'Großes Bild (400×300) auf 128×128 verkleinert (' . $note . ')');
     ok(str_contains((string) json_encode(json_decode(IPS_GetConfigurationForm($id), true), JSON_UNESCAPED_UNICODE), '400×300'), 'Formular zeigt den Zustand der Icons');
+    // Bild, das PHP nicht einlesen kann (z. B. WebP ohne Unterstützung): Original statt nichts
+    $broken = substr($bigPng, 0, 64) . str_repeat("\x00", 70000);
+    IPS_SetMediaContent($media, base64_encode($broken));
+    [$uri, $note] = (new ReflectionMethod($module, 'AppIcon'))->invoke($module, $media);
+    ok(str_starts_with($uri, 'data:image/png;base64,') && strlen($uri) > 90000, 'Nicht verkleinerbares Bild im Original übernommen (' . $note . ')');
     tv(['noAppStatus' => true]);
     SAMTV_Update($id);
     SAMTV_Update($id);
