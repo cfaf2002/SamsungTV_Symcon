@@ -408,6 +408,19 @@ try {
     SAMTV_Update($id);
     ok(attr($id, 'TileIconsKey') !== $key, 'Geändertes Icon wird an die Kachel geschickt');
     ok(str_contains(SAMTV_GetVisualizationTile($id), 'data:image\/svg+xml;base64,'), 'SVG-Icon mit passendem Typ');
+    // großes Bild wird verkleinert
+    $big = imagecreatetruecolor(400, 300);
+    imagefill($big, 0, 0, imagecolorallocate($big, 200, 30, 30));
+    ob_start();
+    imagepng($big);
+    $bigPng = (string) ob_get_clean();
+    IPS_SetMediaFile($media, 'gross.png', false);
+    IPS_SetMediaContent($media, base64_encode($bigPng));
+    $module = \IPS\InstanceManager::getInstanceInterface($id);
+    [$uri, $note] = (new ReflectionMethod($module, 'AppIcon'))->invoke($module, $media);
+    $small = str_starts_with($uri, 'data:image/png;base64,') ? @getimagesizefromstring((string) base64_decode(substr($uri, 22))) : false;
+    ok($small !== false && $small[0] === 128 && $small[1] === 128, 'Großes Bild (400×300) auf 128×128 verkleinert (' . $note . ')');
+    ok(str_contains((string) json_encode(json_decode(IPS_GetConfigurationForm($id), true), JSON_UNESCAPED_UNICODE), '400×300'), 'Formular zeigt den Zustand der Icons');
     tv(['noAppStatus' => true]);
     SAMTV_Update($id);
     SAMTV_Update($id);

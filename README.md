@@ -2,7 +2,7 @@
 
 [![IP-Symcon ab 8.1](https://img.shields.io/badge/IP--Symcon-ab_8.1-0b6fb3.svg)](https://www.symcon.de)
 [![Optimiert für Symcon 9.0](https://img.shields.io/badge/optimiert_f%C3%BCr-Symcon_9.0-0b6fb3.svg)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v81-v90-q1-2026/)
-[![Modul-Version 1.1 (Build 9)](https://img.shields.io/badge/Modul--Version-1.1_(Build_9)-informational.svg)](library.json)
+[![Modul-Version 1.2 (Build 10)](https://img.shields.io/badge/Modul--Version-1.2_(Build_10)-informational.svg)](library.json)
 [![Tests](https://github.com/cfaf2002/SamsungTV_Symcon/actions/workflows/tests.yml/badge.svg)](https://github.com/cfaf2002/SamsungTV_Symcon/actions/workflows/tests.yml)
 [![PHP 8.3 und 8.5](https://img.shields.io/badge/PHP-8.3_%7C_8.5-777bb4.svg?logo=php&logoColor=white)](https://www.php.net)
 [![SDK: IPSModuleStrict](https://img.shields.io/badge/SDK-IPSModuleStrict-success.svg)](https://www.symcon.de/de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/module/)
@@ -98,19 +98,21 @@ Wurde der Zugriff am Fernseher abgelehnt (Status 202), unter **Einstellungen →
 
 ## 5. Kachel
 
-Oben bleibt Platz für Titel und Symbole der Symcon-App. Darunter:
+Gestaltet wie die Front eines AV-Receivers. Oben bleibt Platz für Titel und Symbole der Symcon-App. Darunter:
 
-- **„Jetzt“-Karte:** Icon und Name der laufenden App (bzw. Quelle oder Zustand), Ein/Aus-Taste mit Leuchten, Lautstärkeregler und Stummtaste. Läuft eine App, zeigt ein kleiner Equalizer „läuft“.
-- **App-Dock:** die Favoriten als große Icons wie auf dem Fernseher; die laufende App ist hervorgehoben. Ohne eigenes Bild erscheint ein farbiges Monogramm (z. B. „PV“ für Prime Video).
-- **Steuerkreuz** mit OK, daneben Zurück, Home und Menü sowie die Programmwippe (ohne UPnP auch die Lautstärkewippe). Pfeile und Lautstärke wiederholen sich, solange sie gedrückt bleiben.
-- **Medienleiste** und **Quellen**.
-- **Größen:** je nach Höhe nur die „Jetzt“-Karte, dazu das App-Dock, dazu das Steuerkreuz, ab ca. 620 px alles.
+- **Statusleiste:** LEDs für Ein, Verbindung und App sowie die Ein/Aus-Taste.
+- **Display:** Icon und Name der laufenden App bzw. Quelle in Displayschrift, darunter die Lautstärke als Pegelanzeige mit 20 Segmenten. Ein Tipp auf ein Segment setzt die Lautstärke (mit UPnP), daneben − und +.
+- **App-Tasten:** die Favoriten mit eigenem Icon oder Kürzel (z. B. „PV“ für Prime Video); die laufende App leuchtet.
+- **Tastenfeld:** links Zurück, Home und Menü, in der Mitte das Kreuz mit OK, rechts Programm auf/ab und Stumm. Pfeile und Lautstärke wiederholen sich, solange sie gedrückt bleiben.
+- **Medien- und Quellenleiste** als durchgehende Segmentleisten.
+- **Größen:** je nach Höhe nur Statusleiste und Display, dazu die App-Tasten, dazu das Tastenfeld, ab ca. 580 px alles.
 - **Farbschema der Kachel:** Symcon-Design (Farben der Visualisierung), Dunkel oder Hell. Quellen, Apps sowie Medien- und Programmtasten lassen sich einzeln ausblenden.
 
 ### App-Icons hinterlegen
 
-1. Im Objektbaum ein **Medienobjekt vom Typ Bild** anlegen (z. B. unter der Instanz) und ein Bild hochladen – PNG, JPG, WebP oder SVG, am besten quadratisch (128 × 128 px), höchstens 300 KB.
+1. Im Objektbaum ein **Medienobjekt (Bild)** anlegen (z. B. unter der Instanz) und ein Bild hochladen – PNG, JPG, GIF, WebP oder SVG. Große Bilder verkleinert das Modul selbst auf 128 × 128 px (mittiger, quadratischer Ausschnitt).
 2. In der Instanz unter **Funktionen → Apps** beim Eintrag in der Spalte **Icon (Bild)** das Medienobjekt wählen und übernehmen.
+3. Unter der Liste steht danach je App, ob das Icon erkannt wurde (z. B. „Netflix: ✓ 1024×1024 → 128×128“) oder warum nicht.
 
 Die Reihenfolge der Liste ist die Reihenfolge im App-Dock. Die Icons werden nur beim Öffnen der Kachel und nach einer Änderung übertragen, nicht bei jeder Aktualisierung. Bilder von Marken bitte nur für den privaten Gebrauch verwenden.
 
@@ -181,6 +183,7 @@ php tests/stubs.php ../SymconStubs
 
 | Version | Build | Datum | Beschreibung |
 | :-- | --: | :-- | :-- |
+| 1.2 | 10 | 07.10.2026 | Kachel im technischen Stil (Receiver-Front: LEDs, Display mit Pegelanzeige, eckiges Tastenkreuz, Segmentleisten); Icons: Bildart am Inhalt erkannt, große Bilder auf 128 × 128 px verkleinert, Zustand je App im Formular |
 | 1.1 | 9 | 07.10.2026 | Kachel: mehr Abstand zum Symcon-Titel, feinere Größenstufen (Steuerkreuz schon bei mittlerer Höhe) |
 | 1.1 | 8 | 07.10.2026 | Neue Kachel: „Jetzt“-Karte, App-Dock mit eigenen Icons (Medienobjekte) oder Monogramm, überarbeitetes Steuerkreuz; laufende App wird erkannt; App-Liste ohne Sortierung (Reihenfolge = Kachel) |
 | 1.0 | 7 | 07.10.2026 | App-Start merkt sich den Weg, der beim Fernseher funktioniert (SmartThings, WebSocket oder REST), und nimmt ihn beim nächsten Mal sofort |

@@ -273,6 +273,17 @@ class SamsungTV extends IPSModuleStrict
             $this->InjectProperty($form['elements'], 'DeviceLabel', 'caption', $caption);
             $this->InjectProperty($form['elements'], 'DeviceLabel', 'visible', true);
         }
+        $lines = [];
+        foreach ($this->Apps() as $app) {
+            if ($app['Icon'] > 0) {
+                [$uri, $note] = $this->AppIcon($app['Icon']);
+                $lines[] = $app['Name'] . ': ' . ($uri !== '' ? '✓ ' : '✗ ') . $this->Translate($note);
+            }
+        }
+        if ($lines !== []) {
+            $this->InjectProperty($form['elements'], 'IconInfo', 'caption', $this->Translate('Icons') . ' – ' . implode(' · ', $lines));
+            $this->InjectProperty($form['elements'], 'IconInfo', 'visible', true);
+        }
         $pairing = $this->ReadAttributeInteger('Pairing');
         $this->InjectProperty($form['elements'], 'PairingLabel', 'caption', $this->Translate(match ($pairing) {
             self::PAIR_OK      => 'Paired – Symcon is allowed on the TV.',
@@ -1240,33 +1251,93 @@ class SamsungTV extends IPSModuleStrict
     {
         $icons = [];
         foreach ($this->Apps() as $i => $app) {
-            $media = $app['Icon'];
-            if ($media <= 0 || !IPS_MediaExists($media)) {
-                continue;
+            [$uri] = $this->AppIcon($app['Icon']);
+            if ($uri !== '') {
+                $icons[(string) ($i + 1)] = $uri;
             }
-            $info = IPS_GetMedia($media);
-            if ((int) ($info['MediaType'] ?? -1) !== 1) {
-                continue; // nur Bilder
-            }
-            $content = (string) @IPS_GetMediaContent($media);
-            if ($content === '' || strlen($content) > 400000) {
-                $this->SendDebug('Icon', $app['Name'] . ': image missing or larger than 300 KB', 0);
-                continue;
-            }
-            $mime = match (strtolower(pathinfo((string) ($info['MediaFile'] ?? ''), PATHINFO_EXTENSION))) {
-                'svg'         => 'image/svg+xml',
-                'jpg', 'jpeg' => 'image/jpeg',
-                'gif'         => 'image/gif',
-                'webp'        => 'image/webp',
-                default       => 'image/png',
-            };
-            // nur gültiges Base64 übernehmen
-            if (!preg_match('/^[A-Za-z0-9+\/=\r\n]+$/', $content)) {
-                continue;
-            }
-            $icons[(string) ($i + 1)] = 'data:' . $mime . ';base64,' . preg_replace('/\s+/', '', $content);
         }
         return $icons;
+    }
+
+    /**
+     * Liefert [Data-URI, Hinweis] für ein Medienobjekt. Die Bildart wird am Inhalt erkannt; große Bilder
+     * werden auf 128 × 128 px verkleinert (zwischengespeichert, bis sich das Bild ändert).
+     */
+    private function AppIcon(int $media): array
+    {
+        if ($media <= 0) {
+            return ['', 'no image'];
+        }
+        if (!IPS_MediaExists($media)) {
+            return ['', 'media object not found'];
+        }
+        $info = IPS_GetMedia($media);
+        $content = preg_replace('/\s+/', '', (string) @IPS_GetMediaContent($media));
+        $raw = $content === '' ? false : base64_decode((string) $content, true);
+        if ($raw === false || $raw === '') {
+            return ['', 'media object is empty'];
+        }
+        $crc = md5($raw);
+        $cache = json_decode($this->GetBuffer('IconCache'), true) ?: [];
+        if (($cache[$media]['crc'] ?? '') === $crc) {
+            return [(string) $cache[$media]['uri'], (string) $cache[$media]['note']];
+        }
+
+        $uri = '';
+        $note = '';
+        if (preg_match('/^\s*(<\?xml[^>]*>\s*)?(<!--.*?-->\s*)*<svg[\s>]/is', $raw)) {
+            if (strlen($raw) > 200000) {
+                $note = 'SVG larger than 200 KB';
+            } else {
+                $uri = 'data:image/svg+xml;base64,' . base64_encode($raw);
+                $note = 'SVG';
+            }
+        } else {
+            $size = @getimagesizefromstring($raw);
+            $types = [IMAGETYPE_PNG => 'image/png', IMAGETYPE_JPEG => 'image/jpeg', IMAGETYPE_GIF => 'image/gif', IMAGETYPE_WEBP => 'image/webp'];
+            if ($size === false || !isset($types[$size[2]])) {
+                $note = 'not an image (PNG, JPG, GIF, WebP or SVG)';
+            } elseif (($size[0] > 192 || $size[1] > 192 || strlen($raw) > 60000) && function_exists('imagecreatefromstring')) {
+                $small = $this->ScaleIcon($raw, 128);
+                if ($small !== '') {
+                    $uri = 'data:image/png;base64,' . base64_encode($small);
+                    $note = $size[0] . '×' . $size[1] . ' → 128×128';
+                } else {
+                    $note = 'image could not be scaled';
+                }
+            } elseif (strlen($raw) > 300000) {
+                $note = 'image larger than 300 KB';
+            } else {
+                $uri = 'data:' . $types[$size[2]] . ';base64,' . base64_encode($raw);
+                $note = $size[0] . '×' . $size[1];
+            }
+        }
+        $cache[$media] = ['crc' => $crc, 'uri' => $uri, 'note' => $note];
+        $this->SetBuffer('IconCache', (string) json_encode($cache));
+        $this->SendDebug('Icon', '#' . $media . ' (' . (string) ($info['MediaFile'] ?? '') . '): ' . $note, 0);
+        return [$uri, $note];
+    }
+
+    /**
+     * Verkleinert ein Bild quadratisch (mittiger Ausschnitt) und liefert PNG mit Transparenz.
+     */
+    private function ScaleIcon(string $raw, int $edge): string
+    {
+        $src = @imagecreatefromstring($raw);
+        if ($src === false) {
+            return '';
+        }
+        $w = imagesx($src);
+        $h = imagesy($src);
+        $side = min($w, $h);
+        $dst = imagecreatetruecolor($edge, $edge);
+        imagealphablending($dst, false);
+        imagesavealpha($dst, true);
+        imagefill($dst, 0, 0, imagecolorallocatealpha($dst, 0, 0, 0, 127));
+        imagecopyresampled($dst, $src, 0, 0, intdiv($w - $side, 2), intdiv($h - $side, 2), $edge, $edge, $side, $side);
+        ob_start();
+        imagepng($dst, null, 9);
+        return (string) ob_get_clean();
     }
 
     /**
@@ -1277,7 +1348,7 @@ class SamsungTV extends IPSModuleStrict
         $parts = [];
         foreach ($this->Apps() as $i => $app) {
             $media = $app['Icon'];
-            $updated = $media > 0 && IPS_MediaExists($media) ? (int) (IPS_GetMedia($media)['MediaUpdated'] ?? 0) . ':' . (string) (IPS_GetMedia($media)['MediaCRC'] ?? '') : '';
+            $updated = $media > 0 && IPS_MediaExists($media) ? (string) (IPS_GetMedia($media)['MediaUpdated'] ?? 0) . ':' . (string) (IPS_GetMedia($media)['MediaCRC'] ?? '') . ':' . (string) (IPS_GetMedia($media)['MediaSize'] ?? '') : '';
             $parts[] = ($i + 1) . '=' . $media . '@' . $updated;
         }
         return md5(implode('|', $parts));

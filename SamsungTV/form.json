@@ -168,6 +168,12 @@
                     "values": []
                 },
                 {
+                    "type": "Label",
+                    "name": "IconInfo",
+                    "caption": "",
+                    "visible": false
+                },
+                {
                     "type": "Button",
                     "caption": "Load apps from the TV",
                     "onClick": "IPS_RequestAction($id, 'LoadApps', 0);"
