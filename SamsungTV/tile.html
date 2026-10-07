@@ -141,6 +141,8 @@
     .level { display: flex; align-items: center; gap: 8px; }
     .level .k { font-family: var(--mono); font-size: 11px; color: var(--muted); width: 28px; }
     .meter { flex: 1; display: grid; grid-template-columns: repeat(20, 1fr); gap: 2px; height: 14px; cursor: pointer; }
+    /* Klickfläche 36 px hoch, ohne die Anzeige zu verschieben */
+    .meter { padding: 11px 0; margin: -11px 0; }
     .meter i { border-radius: 1px; background: var(--dim); transition: background-color .15s; }
     .meter i.lit { background: var(--lit); }
     .meter i.lit.hi { background: color-mix(in srgb, var(--lit) 55%, var(--warn)); }

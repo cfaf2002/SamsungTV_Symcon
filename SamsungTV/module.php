@@ -131,6 +131,22 @@ class SamsungTV extends IPSModuleStrict
         $this->RegisterTimer('Poll', 0, 'IPS_RequestAction($_IPS[\'TARGET\'], \'Poll\', 0);');
     }
 
+    public function Destroy(): void
+    {
+        // Instanz wird gelöscht (nicht nur beim Beenden oder Modul-Update entladen): eigenen WebSocket Client mit entfernen
+        if (!IPS_InstanceExists($this->InstanceID) && IPS_GetKernelRunlevel() === KR_READY) {
+            try {
+                $socket = $this->ReadAttributeInteger('Socket');
+                if ($this->IsSocket($socket) && !$this->SocketInUse($socket)) {
+                    IPS_DeleteInstance($socket);
+                }
+            } catch (Throwable $e) {
+                // Aufräumen ist nur eine Hilfe; der WebSocket Client lässt sich auch von Hand löschen
+            }
+        }
+        parent::Destroy();
+    }
+
     /**
      * Übergeordnete Instanz: ein eigener WebSocket Client. Das Modul legt ihn selbst an und verbindet ihn nur,
      * solange der Fernseher an ist – so meldet Symcon im Standby keine inaktive übergeordnete Instanz.
@@ -199,11 +215,16 @@ class SamsungTV extends IPSModuleStrict
                 break;
             case FM_CONNECT:
             case FM_DISCONNECT:
+                // Neue oder getrennte Verbindung: angefangene Nachricht verwerfen
+                $this->SetBuffer('RX', '');
                 $this->WatchParent();
                 break;
             case IM_CHANGESTATUS:
                 // WebSocket verbunden oder getrennt: Kachel sofort nachziehen
                 $this->SendDebug('WebSocket', $this->HasActiveParent() ? 'connected' : 'disconnected', 0);
+                if (!$this->HasActiveParent()) {
+                    $this->SetBuffer('RX', '');
+                }
                 $this->PushTile();
                 break;
         }
@@ -216,7 +237,10 @@ class SamsungTV extends IPSModuleStrict
                 $this->SetPower((bool) $Value);
                 break;
             case 'Volume':
-                $this->SetVolume((int) $Value);
+                if (!$this->SetVolume((int) $Value)) {
+                    // Kachel zeigt den Wert schon vorab: echten Stand zurückschicken
+                    $this->PushTile(true);
+                }
                 break;
             case 'Mute':
                 $this->SetMute((bool) $Value);
@@ -324,8 +348,18 @@ class SamsungTV extends IPSModuleStrict
         }
 
         // Große Antworten (App-Liste) können in mehreren Stücken kommen
-        $pending = $this->GetBuffer('RX') . $buffer;
+        $rest = $this->GetBuffer('RX');
+        $pending = $rest . $buffer;
         $message = json_decode($pending, true);
+        if (!is_array($message) && $rest !== '') {
+            // Liegt ein unbrauchbarer Rest im Puffer, darf er die nächste vollständige Nachricht nicht blockieren
+            $message = json_decode($buffer, true);
+            if (is_array($message)) {
+                $this->SendDebug('Receive', 'incomplete message dropped (' . strlen($rest) . ' bytes)', 0);
+            } else {
+                $pending = $this->StartsMessage($buffer) ? $buffer : $pending;
+            }
+        }
         if (!is_array($message)) {
             $this->SetBuffer('RX', strlen($pending) < 262144 ? $pending : '');
             return '';
@@ -333,6 +367,14 @@ class SamsungTV extends IPSModuleStrict
         $this->SetBuffer('RX', '');
         $this->HandleMessage($message);
         return '';
+    }
+
+    /**
+     * Beginnt hier eine neue Nachricht des Fernsehers ({"event": …})?
+     */
+    private function StartsMessage(string $buffer): bool
+    {
+        return (bool) preg_match('/^\s*\{\s*"(event|data|id)"/', $buffer);
     }
 
     // ------------------------------------------------------------------
@@ -386,10 +428,15 @@ class SamsungTV extends IPSModuleStrict
         }
         $this->SetValueIfChanged('Power', $on);
 
-        if ($on && $this->ReadPropertyBoolean('UseUpnpVolume')) {
+        // Während des 2-Sekunden-Takts nach einem Schaltbefehl nur den Ein/Aus-Zustand: Lautstärke und
+        // laufende App kosten je App bis zu 1,5 s und kommen mit dem nächsten normalen Abruf
+        $fast = $this->ReadAttributeString('PowerTarget') !== '' && ($this->ReadAttributeString('PowerTarget') === 'on') !== $on;
+        if ($on && !$fast && $this->ReadPropertyBoolean('UseUpnpVolume')) {
             $this->ReadVolume();
         }
-        $this->DetectRunningApp($on);
+        if (!$on || !$fast) {
+            $this->DetectRunningApp($on);
+        }
 
         // Schaltziel erreicht oder abgelaufen
         $target = $this->ReadAttributeString('PowerTarget');
@@ -413,7 +460,8 @@ class SamsungTV extends IPSModuleStrict
      */
     public function PowerOn(): bool
     {
-        if ($this->ReadAttributeBoolean('TvOn')) {
+        // Gemerkter Zustand kann bis zu zwei Abrufe alt sein: vor dem Abbruch beim Fernseher nachfragen
+        if ($this->ReadAttributeBoolean('TvOn') && $this->CheckPower()) {
             return true;
         }
         $this->SetPowerTarget('on');
@@ -438,10 +486,14 @@ class SamsungTV extends IPSModuleStrict
      */
     public function PowerOff(): bool
     {
-        if (!$this->ReadAttributeBoolean('TvOn')) {
+        if (!$this->ReadAttributeBoolean('TvOn') && !$this->CheckPower()) {
             return true;
         }
         $this->SetPowerTarget('off');
+        // Gerade erst als an erkannt: kurz warten, bis der WebSocket verbunden ist
+        for ($i = 0; $i < 20 && !$this->HasActiveParent() && $this->ReadAttributeInteger('Pairing') !== self::PAIR_DENIED; $i++) {
+            IPS_Sleep(100);
+        }
         if ($this->ReadPropertyInteger('PowerOffMode') === 1) {
             return $this->HoldKey('KEY_POWER', 3000);
         }
@@ -459,6 +511,10 @@ class SamsungTV extends IPSModuleStrict
             return false;
         }
         $ok = $this->SendRemote('Click', $key);
+        if ($ok && $key === 'KEY_MUTE') {
+            // für SetMute ohne UPnP: Stummtaste schaltet um
+            $this->SetBuffer('Muted', $this->GetBuffer('Muted') === '1' ? '0' : '1');
+        }
         // Lautstärke nach Tastendruck nachlesen, damit Variable und Kachel stimmen
         if ($ok && in_array($key, ['KEY_VOLUP', 'KEY_VOLDOWN', 'KEY_MUTE'], true) && $this->ReadPropertyBoolean('UseUpnpVolume')) {
             IPS_Sleep(150);
@@ -611,7 +667,7 @@ class SamsungTV extends IPSModuleStrict
      * Passt eine App-ID an die App-Liste des Fernsehers an: Ist die ID dort nicht vorhanden, wird die App
      * mit gleichem Namen genommen (App-IDs unterscheiden sich je nach Baujahr und Land).
      */
-    private function InstalledAppID(string $appID, string $name): string
+    private function InstalledAppID(string $appID, string $name, bool $debug = true): string
     {
         $installed = json_decode($this->GetInstalledApps(), true) ?: [];
         if ($installed === [] || in_array($appID, array_column($installed, 'appId'), true)) {
@@ -630,7 +686,9 @@ class SamsungTV extends IPSModuleStrict
         }
         foreach ($installed as $app) {
             if (mb_strtolower(trim((string) $app['name'])) === $wanted) {
-                $this->SendDebug('App', $name . ': ' . $appID . ' → ' . $app['appId'] . ' (ID of this TV)', 0);
+                if ($debug) {
+                    $this->SendDebug('App', $name . ': ' . $appID . ' → ' . $app['appId'] . ' (ID of this TV)', 0);
+                }
                 return (string) $app['appId'];
             }
         }
@@ -702,7 +760,17 @@ class SamsungTV extends IPSModuleStrict
             return false;
         }
         if (!$this->ReadPropertyBoolean('UseUpnpVolume')) {
-            return $this->SendKey('KEY_MUTE');
+            // Die Stummtaste schaltet um: nur drücken, wenn der Ton noch nicht im gewünschten Zustand ist.
+            // Zustand vom Fernseher (UPnP, falls er antwortet), sonst der zuletzt über Symcon gesetzte
+            $muted = $this->UpnpGetMute($host) ?? $this->GetBuffer('Muted') === '1';
+            if ($muted === $Mute) {
+                return true;
+            }
+            $ok = $this->SendKey('KEY_MUTE');
+            if ($ok) {
+                $this->SetBuffer('Muted', $Mute ? '1' : '0');
+            }
+            return $ok;
         }
         if (!$this->UpnpSetMute($host, $Mute)) {
             $this->SendDebug('SetMute', 'failed: ' . $this->apiError, 0);
@@ -930,7 +998,9 @@ class SamsungTV extends IPSModuleStrict
         $running = 0;
         $answered = false;
         foreach ($this->Apps() as $i => $app) {
-            $raw = $this->HttpRequest('GET', 'http://' . $host . ':8001/api/v2/applications/' . rawurlencode($app['AppID']), '', [], 500, 1500);
+            // ID dieses Fernsehers (kann je nach Baujahr und Land von der eingetragenen abweichen)
+            $appID = $this->InstalledAppID($app['AppID'], $app['Name'], false);
+            $raw = $this->HttpRequest('GET', 'http://' . $host . ':8001/api/v2/applications/' . rawurlencode($appID), '', [], 500, 1500);
             if ($raw === null) {
                 // 404 = App nicht installiert; das ist eine Antwort
                 $answered = $answered || $this->apiError === 'HTTP 404';
@@ -994,6 +1064,31 @@ class SamsungTV extends IPSModuleStrict
         return $ok;
     }
 
+    /**
+     * Fragt den Ein/Aus-Zustand sofort beim Fernseher ab und übernimmt ihn (ohne Lautstärke und Apps).
+     * Liefert true, wenn der Fernseher an ist.
+     */
+    private function CheckPower(): bool
+    {
+        $host = $this->Host();
+        $info = $host === '' ? null : $this->FetchDeviceInfo($host);
+        if ($info !== null) {
+            $info['host'] = $host;
+            $this->WriteAttributeString('DeviceInfo', (string) json_encode($info));
+            $this->WriteAttributeInteger('FailCount', 0);
+        }
+        $this->WriteAttributeBoolean('Reachable', $info !== null);
+        $on = $info !== null && $info['powerState'] === 'on';
+        if ($on !== $this->ReadAttributeBoolean('TvOn')) {
+            $this->SendDebug('Power', ($on ? 'on' : 'off') . ' (checked before switching)', 0);
+            $this->WriteAttributeBoolean('TvOn', $on);
+            $this->SetValueIfChanged('Power', $on);
+            $this->ConfigureParent();
+            $this->PushTile();
+        }
+        return $on;
+    }
+
     private function SetPowerTarget(string $target): void
     {
         $this->WriteAttributeString('PowerTarget', $target);
@@ -1020,12 +1115,14 @@ class SamsungTV extends IPSModuleStrict
      */
     private function LoadAppsIntoForm(): void
     {
+        // Erst leeren, dann fragen: eine schnelle Antwort darf nicht wieder gelöscht werden
+        $before = $this->ReadAttributeString('InstalledApps');
+        $this->WriteAttributeString('InstalledApps', '');
         if (!$this->RequestInstalledApps()) {
+            $this->WriteAttributeString('InstalledApps', $before);
             echo $this->Translate('The TV must be on and paired to load its apps.');
             return;
         }
-        $before = $this->ReadAttributeString('InstalledApps');
-        $this->WriteAttributeString('InstalledApps', '');
         for ($i = 0; $i < 25 && $this->ReadAttributeString('InstalledApps') === ''; $i++) {
             IPS_Sleep(200);
         }
@@ -1142,6 +1239,19 @@ class SamsungTV extends IPSModuleStrict
     private function IsSocket(int $id): bool
     {
         return $id > 0 && IPS_InstanceExists($id) && IPS_GetInstance($id)['ModuleInfo']['ModuleID'] === self::WSC_GUID;
+    }
+
+    /**
+     * Hängt eine andere Instanz an diesem WebSocket Client?
+     */
+    private function SocketInUse(int $socket): bool
+    {
+        foreach (IPS_GetInstanceList() as $id) {
+            if ($id !== $this->InstanceID && (IPS_GetInstance($id)['ConnectionID'] ?? 0) === $socket) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private function SocketUrl(string $host): string

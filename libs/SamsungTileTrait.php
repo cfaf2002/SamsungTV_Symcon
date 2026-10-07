@@ -33,13 +33,14 @@ trait SamsungTileTrait
     }
 
     /**
-     * Sendet die Kacheldaten, wenn sich etwas geändert hat.
+     * Sendet die Kacheldaten, wenn sich etwas geändert hat ($Force: auch unverändert, z. B. nach einem
+     * fehlgeschlagenen Befehl, den die Kachel schon vorab angezeigt hat).
      */
-    private function PushTile(): void
+    private function PushTile(bool $Force = false): void
     {
         $data = $this->TileData();
         $json = (string) json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
-        if ($json === $this->ReadAttributeString('TileData')) {
+        if ($json === $this->ReadAttributeString('TileData') && !$Force) {
             return; // unverändert: nichts an die Visualisierung schicken
         }
         $this->WriteAttributeString('TileData', $json);

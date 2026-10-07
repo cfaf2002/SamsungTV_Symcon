@@ -2,7 +2,7 @@
 
 [![IP-Symcon ab 8.1](https://img.shields.io/badge/IP--Symcon-ab_8.1-0b6fb3.svg)](https://www.symcon.de)
 [![Optimiert für Symcon 9.0](https://img.shields.io/badge/optimiert_f%C3%BCr-Symcon_9.0-0b6fb3.svg)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v81-v90-q1-2026/)
-[![Modul-Version 1.2 (Build 21)](https://img.shields.io/badge/Modul--Version-1.2_(Build_21)-informational.svg)](library.json)
+[![Modul-Version 1.3 (Build 22)](https://img.shields.io/badge/Modul--Version-1.3_(Build_22)-informational.svg)](library.json)
 [![Tests](https://github.com/cfaf2002/SamsungTV_Symcon/actions/workflows/tests.yml/badge.svg)](https://github.com/cfaf2002/SamsungTV_Symcon/actions/workflows/tests.yml)
 [![PHP 8.3 und 8.5](https://img.shields.io/badge/PHP-8.3_%7C_8.5-777bb4.svg?logo=php&logoColor=white)](https://www.php.net)
 [![SDK: IPSModuleStrict](https://img.shields.io/badge/SDK-IPSModuleStrict-success.svg)](https://www.symcon.de/de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/module/)
@@ -63,7 +63,7 @@ Autor: Armin Frohwerk · Lizenz: MIT
 | UPnP RenderingControl | 9197 (http) | Lautstärke und Stumm |
 | Wake-on-LAN | UDP 9 | Einschalten |
 
-Die WebSocket-Verbindung hält ein Symcon-**WebSocket Client** als übergeordnete Instanz. Das Modul legt ihn selbst an (Name „… (WebSocket)“ unter den I/O-Instanzen), trägt die Adresse ein und verbindet ihn nur, solange der Fernseher an ist. Ist der Fernseher aus, wird der WebSocket Client abgeschaltet und von der Instanz getrennt – so gibt es weder Fehlermeldungen im Log noch ein Warnsymbol im Objektbaum. In der Instanzkonfiguration zeigt Symcon währenddessen oben den Hinweis „Die Instanz benötigt eine übergeordnete Instanz“ – das ist gewollt, **kein Fehler**, und verschwindet beim Einschalten; „Gateway ändern“ ist dafür nicht nötig. Das Modul blendet dazu ganz oben im Formular einen eigenen Hinweis „Achtung – kein Fehler“ ein. Wird die Instanz gelöscht, kann der WebSocket Client von Hand mit gelöscht werden.
+Die WebSocket-Verbindung hält ein Symcon-**WebSocket Client** als übergeordnete Instanz. Das Modul legt ihn selbst an (Name „… (WebSocket)“ unter den I/O-Instanzen), trägt die Adresse ein und verbindet ihn nur, solange der Fernseher an ist. Ist der Fernseher aus, wird der WebSocket Client abgeschaltet und von der Instanz getrennt – so gibt es weder Fehlermeldungen im Log noch ein Warnsymbol im Objektbaum. In der Instanzkonfiguration zeigt Symcon währenddessen oben den Hinweis „Die Instanz benötigt eine übergeordnete Instanz“ – das ist gewollt, **kein Fehler**, und verschwindet beim Einschalten; „Gateway ändern“ ist dafür nicht nötig. Das Modul blendet dazu ganz oben im Formular einen eigenen Hinweis „Achtung – kein Fehler“ ein. Wird die Instanz gelöscht, entfernt sie ihren WebSocket Client mit (sofern keine andere Instanz daran hängt).
 
 Die SmartThings-Cloud wird bewusst nicht genutzt: Sie liefert zwar die aktive Quelle, verlangt aber Zugangsdaten, die Samsung inzwischen nur noch 24 Stunden gültig ausstellt.
 
@@ -133,15 +133,15 @@ Die Quelle zeigt die zuletzt gewählte Quelle; der Fernseher meldet über die lo
 
 | Befehl | Beschreibung |
 | :-- | :-- |
-| `SAMTV_PowerOn(int $id): bool` | Einschalten (Wake-on-LAN, im Netzwerk-Standby zusätzlich die Ein/Aus-Taste) |
-| `SAMTV_PowerOff(int $id): bool` | Ausschalten |
+| `SAMTV_PowerOn(int $id): bool` | Einschalten (Wake-on-LAN, im Netzwerk-Standby zusätzlich die Ein/Aus-Taste); gilt der Fernseher schon als an, wird vorher kurz nachgefragt |
+| `SAMTV_PowerOff(int $id): bool` | Ausschalten; gilt der Fernseher schon als aus, wird vorher kurz nachgefragt |
 | `SAMTV_SetPower(int $id, bool $on): bool` | Ein- oder ausschalten |
 | `SAMTV_SendKey(int $id, string $key): bool` | Taste senden, z. B. `KEY_HOME`, `KEY_VOLUP`, `KEY_HDMI2` (Präfix `KEY_` darf fehlen) |
 | `SAMTV_SendKeys(int $id, string $keys, int $delayMs): bool` | Tastenfolge, z. B. `"KEY_HOME,KEY_RIGHT,KEY_ENTER"` |
 | `SAMTV_HoldKey(int $id, string $key, int $ms): bool` | Taste gedrückt halten (höchstens 5 s) |
 | `SAMTV_SelectSource(int $id, string $source): bool` | `TV`, `HDMI1` … `HDMI4` |
 | `SAMTV_SetVolume(int $id, int $volume): bool` | Lautstärke 0–100 (UPnP) |
-| `SAMTV_SetMute(int $id, bool $mute): bool` | Stumm an/aus |
+| `SAMTV_SetMute(int $id, bool $mute): bool` | Stumm an/aus (ohne UPnP über die Stummtaste – nur gedrückt, wenn der Ton nicht schon im gewünschten Zustand ist) |
 | `SAMTV_LaunchApp(int $id, string $appId): bool` | App starten, z. B. `3201907018807` (Netflix) |
 | `SAMTV_OpenBrowser(int $id, string $url): bool` | Webseite im Browser des Fernsehers öffnen |
 | `SAMTV_SendText(int $id, string $text): bool` | Text in ein geöffnetes Eingabefeld schreiben |
@@ -167,7 +167,7 @@ SAMTV_SetVolume(12345, 18);
 - Der Token des Fernsehers liegt in einem Attribut und steht in der Adresse des WebSocket-Clients; ins Debug wird er nicht geschrieben.
 - Tasten, Quellen, App-IDs und Adressen werden vor dem Senden geprüft; die Kachel setzt alle Texte per `textContent`, Kacheldaten werden mit `JSON_HEX_*` eingebettet. App-Icons werden am Inhalt als Bild erkannt und nur als `data:image/…` in `<img>` gezeigt.
 - Tasten gehen über die bestehende WebSocket-Verbindung ohne neuen Verbindungsaufbau. Abfragen haben kurze Zeitlimits (Verbindung 0,8 s), damit ein ausgeschalteter Fernseher Symcon nicht aufhält. Als „aus“ gilt der Fernseher erst nach zwei Fehlversuchen.
-- Die laufende App wird nur bei eingeschaltetem Fernseher abgefragt (eine kurze Anfrage je Favorit, Zeitlimit 1,5 s); antwortet der Fernseher dreimal nicht, bleibt die Abfrage aus.
+- Die laufende App wird nur bei eingeschaltetem Fernseher abgefragt (eine kurze Anfrage je Favorit, Zeitlimit 1,5 s); antwortet der Fernseher dreimal nicht, bleibt die Abfrage aus. Im 2-Sekunden-Takt nach einem Schaltbefehl fragt das Modul nur Ein/Aus ab.
 - Icons werden einmal verkleinert und zwischengespeichert und nur beim Öffnen der Kachel bzw. nach einer Änderung übertragen.
 - Variablen werden nur bei Änderung geschrieben, die Kachel nur bei geänderten Daten aktualisiert; das Blinken beim Schalten ruht, solange die Kachel nicht sichtbar ist.
 - Datenfluss zum WebSocket-Client HEX-kodiert, wie es IPSModuleStrict verlangt.
@@ -186,6 +186,7 @@ php tests/stubs.php ../SymconStubs
 
 | Version | Build | Datum | Beschreibung |
 | :-- | --: | :-- | :-- |
+| 1.3 | 22 | 07.10.2026 | Empfangspuffer blockiert nicht mehr nach einem unvollständigen Stück und wird beim Trennen geleert (Kopplung und App-Starts gehen nicht mehr verloren); „Apps vom Fernseher laden“ verliert keine schnelle Antwort mehr; laufende App auch bei abweichender App-ID des Fernsehers erkannt; Ein-/Ausschalten fragt bei veraltetem Zustand kurz nach statt still abzubrechen; `SetMute` ohne UPnP schaltet nicht mehr versehentlich um; Löschen der Instanz entfernt den eigenen WebSocket Client; Schnelltakt nach Schaltbefehl nur noch mit Ein/Aus-Abfrage; Kachel zeigt nach fehlgeschlagener Lautstärkeänderung wieder den echten Wert; Pegelanzeige mit 36 px Klickfläche |
 | 1.2 | 21 | 07.10.2026 | Hinweis „Achtung – kein Fehler“ ganz oben im Formular, solange der Fernseher aus ist (aktualisiert sich auch bei offenem Formular) |
 | 1.2 | 20 | 07.10.2026 | Formular erklärt im Standby den Symcon-Hinweis zur fehlenden übergeordneten Instanz |
 | 1.2 | 19 | 07.10.2026 | Kein Warnsymbol im Objektbaum, solange der Fernseher aus ist: der WebSocket Client wird im Standby getrennt statt nur inaktiv geschaltet (das Modul legt ihn selbst an und merkt ihn sich) |
