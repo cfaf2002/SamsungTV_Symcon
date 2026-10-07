@@ -5,7 +5,7 @@
 
     Aufbau: oben frei für Titel und Symbole von Symcon · „Jetzt“-Karte (laufende App bzw. Quelle, Ein/Aus, Lautstärke) ·
     App-Dock mit Icons (Medienobjekte als Data-URI, sonst Monogramm) · Steuerkreuz mit Navigation und Wippen ·
-    Medienleiste · Quellen. Klein = nur „Jetzt“-Karte, mittel = Karte und App-Dock, groß = alles.
+    Medienleiste · Quellen. Je nach Höhe: nur „Jetzt“-Karte · + App-Dock · + Steuerkreuz · alles.
     Sicherheit: Alle Werte werden per textContent gesetzt, nie als HTML.
     Leistung:   Keine externen Dateien; Symbole als eingebettete SVG. App-Icons kommen nur beim Laden und bei
                 Änderungen. Animationen (Schalten, „läuft“) ruhen, solange die Kachel nicht sichtbar ist.
@@ -64,7 +64,7 @@
         width: 100%;
         height: 100%;
         /* oben Platz für Titel und Symbole der Kachel-Visualisierung (Name kommt von Symcon) */
-        padding: clamp(40px, 11cqmin, 54px) 12px 12px;
+        padding: clamp(54px, 13cqmin, 64px) 12px 12px;
         display: flex;
         flex-direction: column;
         gap: 12px;
@@ -198,7 +198,7 @@
     .dpad {
         justify-self: center;
         position: relative;
-        width: min(210px, 52cqw, 46cqh);
+        width: min(210px, 52cqw, max(120px, calc(100cqh - 280px)));
         aspect-ratio: 1;
         border-radius: 50%;
         background:
@@ -240,12 +240,15 @@
     .sources button { padding: 0 14px; border-radius: var(--pill); white-space: nowrap; flex: none; font-size: 12px; font-weight: 500; }
     .sources button.sel { background: var(--accent); color: var(--on-accent); }
 
-    /* Größen: klein = nur „Jetzt“-Karte, mittel = Karte und App-Dock */
-    @container (max-height: 300px) {
+    /* Größen (Höhe ohne Titelbereich): nur „Jetzt“-Karte · + App-Dock · + Steuerkreuz · alles */
+    @container (max-height: 230px) {
         .body { display: none; }
     }
-    @container (max-height: 470px) {
-        .deck, .media, .sources { display: none !important; }
+    @container (max-height: 400px) {
+        .deck { display: none !important; }
+    }
+    @container (max-height: 560px) {
+        .media, .sources { display: none !important; }
     }
     @container (max-width: 340px) {
         .deck { grid-template-columns: 1fr auto; }

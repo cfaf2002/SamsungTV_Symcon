@@ -2,7 +2,7 @@
 
 [![IP-Symcon ab 8.1](https://img.shields.io/badge/IP--Symcon-ab_8.1-0b6fb3.svg)](https://www.symcon.de)
 [![Optimiert für Symcon 9.0](https://img.shields.io/badge/optimiert_f%C3%BCr-Symcon_9.0-0b6fb3.svg)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v81-v90-q1-2026/)
-[![Modul-Version 1.1 (Build 8)](https://img.shields.io/badge/Modul--Version-1.1_(Build_8)-informational.svg)](library.json)
+[![Modul-Version 1.1 (Build 9)](https://img.shields.io/badge/Modul--Version-1.1_(Build_9)-informational.svg)](library.json)
 [![Tests](https://github.com/cfaf2002/SamsungTV_Symcon/actions/workflows/tests.yml/badge.svg)](https://github.com/cfaf2002/SamsungTV_Symcon/actions/workflows/tests.yml)
 [![PHP 8.3 und 8.5](https://img.shields.io/badge/PHP-8.3_%7C_8.5-777bb4.svg?logo=php&logoColor=white)](https://www.php.net)
 [![SDK: IPSModuleStrict](https://img.shields.io/badge/SDK-IPSModuleStrict-success.svg)](https://www.symcon.de/de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/module/)
@@ -104,7 +104,7 @@ Oben bleibt Platz für Titel und Symbole der Symcon-App. Darunter:
 - **App-Dock:** die Favoriten als große Icons wie auf dem Fernseher; die laufende App ist hervorgehoben. Ohne eigenes Bild erscheint ein farbiges Monogramm (z. B. „PV“ für Prime Video).
 - **Steuerkreuz** mit OK, daneben Zurück, Home und Menü sowie die Programmwippe (ohne UPnP auch die Lautstärkewippe). Pfeile und Lautstärke wiederholen sich, solange sie gedrückt bleiben.
 - **Medienleiste** und **Quellen**.
-- **Größen:** klein (bis ca. 300 px Höhe) nur die „Jetzt“-Karte, mittel (bis ca. 470 px) zusätzlich das App-Dock, groß alles.
+- **Größen:** je nach Höhe nur die „Jetzt“-Karte, dazu das App-Dock, dazu das Steuerkreuz, ab ca. 620 px alles.
 - **Farbschema der Kachel:** Symcon-Design (Farben der Visualisierung), Dunkel oder Hell. Quellen, Apps sowie Medien- und Programmtasten lassen sich einzeln ausblenden.
 
 ### App-Icons hinterlegen
@@ -181,6 +181,7 @@ php tests/stubs.php ../SymconStubs
 
 | Version | Build | Datum | Beschreibung |
 | :-- | --: | :-- | :-- |
+| 1.1 | 9 | 07.10.2026 | Kachel: mehr Abstand zum Symcon-Titel, feinere Größenstufen (Steuerkreuz schon bei mittlerer Höhe) |
 | 1.1 | 8 | 07.10.2026 | Neue Kachel: „Jetzt“-Karte, App-Dock mit eigenen Icons (Medienobjekte) oder Monogramm, überarbeitetes Steuerkreuz; laufende App wird erkannt; App-Liste ohne Sortierung (Reihenfolge = Kachel) |
 | 1.0 | 7 | 07.10.2026 | App-Start merkt sich den Weg, der beim Fernseher funktioniert (SmartThings, WebSocket oder REST), und nimmt ihn beim nächsten Mal sofort |
 | 1.0 | 6 | 07.10.2026 | App-Start wahlweise über die SmartThings-Instanz des Fernsehers (nötig bei Modellen ab 2021); ohne Antwort des Fernsehers Start über REST; App-Liste höchstens stündlich angefragt |
